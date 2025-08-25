@@ -18,6 +18,7 @@ if __name__ == "__main__":
 # Ensure environment variables are loaded before importing settings
 try:
     from .config import settings
+    from .file_manager import temp_image_manager
     from .image_generator import ImageGenerationService
     from .models import (
         BatchGenerationRequest,
@@ -31,6 +32,7 @@ try:
 except ImportError:
     # Direct execution fallback
     from gpt_thumbnail_mcp.config import settings
+    from gpt_thumbnail_mcp.file_manager import temp_image_manager
     from gpt_thumbnail_mcp.image_generator import ImageGenerationService
     from gpt_thumbnail_mcp.models import (
         BatchGenerationRequest,
@@ -241,16 +243,26 @@ async def generate_image(
             response = await service.generate_image(request)
         
         if response.success:
-            result = {
-                "success": True,
-                "image_data": response.image_data,
-                "revised_prompt": response.revised_prompt,
-                "metadata": response.metadata,
-                "message": "Image generated successfully!"
-            }
-            
-            if response.suggestions:
-                result["suggestions"] = response.suggestions
+            # Save image to temporary file instead of returning base64 data
+            try:
+                file_path = temp_image_manager.save_image(response.image_data, "png")
+                result = {
+                    "success": True,
+                    "file_path": file_path,
+                    "revised_prompt": response.revised_prompt,
+                    "metadata": response.metadata,
+                    "message": "Image generated and saved successfully!"
+                }
+                
+                if response.suggestions:
+                    result["suggestions"] = response.suggestions
+            except Exception as e:
+                logger.error(f"Failed to save image file: {str(e)}")
+                result = {
+                    "success": False,
+                    "error": f"Image generated but failed to save: {str(e)}",
+                    "suggestions": ["Try generating the image again"]
+                }
         else:
             result = {
                 "success": False,
@@ -306,13 +318,23 @@ async def optimize_for_platform(
             response = await service.optimize_for_platform(request)
         
         if response.success:
-            result = {
-                "success": True,
-                "optimized_image": response.image_data,
-                "optimized_for": request.target_platform,
-                "metadata": response.metadata,
-                "message": f"Image optimized for {request.target_platform}"
-            }
+            # Save optimized image to temporary file
+            try:
+                file_path = temp_image_manager.save_image(response.image_data, "png")
+                result = {
+                    "success": True,
+                    "optimized_image_path": file_path,
+                    "optimized_for": request.target_platform,
+                    "metadata": response.metadata,
+                    "message": f"Image optimized for {request.target_platform} and saved"
+                }
+            except Exception as e:
+                logger.error(f"Failed to save optimized image: {str(e)}")
+                result = {
+                    "success": False,
+                    "error": f"Image optimized but failed to save: {str(e)}",
+                    "suggestions": ["Try the optimization again"]
+                }
         else:
             result = {
                 "success": False,
@@ -423,10 +445,21 @@ async def generate_batch(
             }
             
             if result.success:
-                result_data.update({
-                    "image_generated": True,
-                    "metadata": result.metadata
-                })
+                # Save each batch image to temporary file
+                try:
+                    file_path = temp_image_manager.save_image(result.image_data, "png")
+                    result_data.update({
+                        "image_generated": True,
+                        "file_path": file_path,
+                        "metadata": result.metadata
+                    })
+                except Exception as e:
+                    logger.error(f"Failed to save batch image {i}: {str(e)}")
+                    result_data.update({
+                        "success": False,
+                        "error": f"Image generated but failed to save: {str(e)}",
+                        "suggestions": ["Try generating this image individually"]
+                    })
             else:
                 result_data.update({
                     "error": result.error,
@@ -484,6 +517,31 @@ async def get_prompt_suggestions(
         }, indent=2)
 
 
+@mcp.resource("gpt://temp-files/info")
+def get_temp_files_info() -> str:
+    """Get information about temporary files storage."""
+    info = temp_image_manager.get_temp_dir_info()
+    return json.dumps(info, indent=2)
+
+
+@mcp.tool()
+async def cleanup_temp_files() -> str:
+    """Clean up old temporary files."""
+    try:
+        cleaned_count = temp_image_manager.cleanup_old_files()
+        return json.dumps({
+            "success": True,
+            "files_cleaned": cleaned_count,
+            "message": f"Successfully cleaned up {cleaned_count} old image files"
+        }, indent=2)
+    except Exception as e:
+        logger.error(f"Cleanup failed: {str(e)}")
+        return json.dumps({
+            "success": False,
+            "error": str(e)
+        }, indent=2)
+
+
 def main():
     """Main entry point for the FastMCP server."""
     logger.info(f"Starting {settings.server_name} v{settings.server_version}")
@@ -492,6 +550,14 @@ def main():
     if not settings.openai_api_key:
         logger.error("OpenAI API key not found. Please set OPENAI_API_KEY environment variable.")
         return
+    
+    # Clean up old temporary files on startup
+    try:
+        cleaned_count = temp_image_manager.cleanup_old_files()
+        if cleaned_count > 0:
+            logger.info(f"Cleaned up {cleaned_count} old temporary files on startup")
+    except Exception as e:
+        logger.warning(f"Failed to clean up temporary files on startup: {str(e)}")
     
     # Run the FastMCP server
     mcp.run()

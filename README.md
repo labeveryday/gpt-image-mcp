@@ -186,6 +186,29 @@ Get AI suggestions for better prompts.
 - `surprised` - Attention-grabbing
 - `dramatic` - Intense, compelling
 
+## 💾 File Storage
+
+### Temporary Image Storage
+Generated images are automatically saved to cross-platform temporary directories:
+
+- **macOS**: `/var/folders/.../gpt-thumbnail-mcp/`
+- **Windows**: `C:\Users\{user}\AppData\Local\Temp\gpt-thumbnail-mcp\`  
+- **Linux**: `/tmp/gpt-thumbnail-mcp/`
+
+**Automatic Cleanup:**
+- Files older than 24 hours are automatically deleted
+- Cleanup runs on server startup and via the `cleanup_temp_files` tool
+- Unique filenames prevent conflicts: `image_20250825_142324_3566695c.png`
+
+**Manual Management:**
+```bash
+# Check temp directory status
+uv run python -c "from src.gpt_thumbnail_mcp.file_manager import temp_image_manager; print(temp_image_manager.get_temp_dir_info())"
+
+# Clean up old files manually
+uv run python -c "from src.gpt_thumbnail_mcp.file_manager import temp_image_manager; print(f'Cleaned {temp_image_manager.cleanup_old_files()} files')"
+```
+
 ## 🔧 Configuration
 
 ### Environment Variables (.env)
