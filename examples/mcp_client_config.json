@@ -1,0 +1,162 @@
+{
+  "description": "Example MCP client configuration for GPT Thumbnail MCP Server",
+  "configurations": {
+    "claude_code": {
+      "description": "Configuration for Claude Code IDE (FastMCP)",
+      "config": {
+        "name": "gpt-thumbnail-mcp",
+        "command": "uv",
+        "args": ["run", "gpt-thumbnail-mcp"],
+        "cwd": "/path/to/gpt-thumbnail-mcp",
+        "env": {
+          "OPENAI_API_KEY": "your_api_key_here"
+        }
+      }
+    },
+    "claude_desktop": {
+      "description": "Configuration for Claude Desktop app",
+      "config": {
+        "mcpServers": {
+          "gpt-thumbnail-mcp": {
+            "command": "uv",
+            "args": ["run", "gpt-thumbnail-mcp"],
+            "cwd": "/path/to/gpt-thumbnail-mcp",
+            "env": {
+              "OPENAI_API_KEY": "your_api_key_here"
+            }
+          }
+        }
+      }
+    },
+    "custom_client": {
+      "description": "Generic MCP client configuration",
+      "config": {
+        "servers": [
+          {
+            "name": "gpt-thumbnail-mcp",
+            "transport": {
+              "type": "stdio",
+              "command": "uv",
+              "args": ["run", "gpt-thumbnail-mcp"],
+              "cwd": "/path/to/gpt-thumbnail-mcp"
+            },
+            "capabilities": [
+              "tools",
+              "resources",
+              "prompts"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "usage_examples": {
+    "generate_youtube_thumbnail": {
+      "tool": "generate_image",
+      "params": {
+        "prompt": "Excited tech reviewer with latest gadget, bright studio lighting",
+        "content_type": "youtube_thumbnail",
+        "style": "professional",
+        "emotional_tone": "excited",
+        "include_text_overlay": true,
+        "text_overlay": "Amazing New Tech!",
+        "brand_colors": ["#FF0000", "#FFFFFF"]
+      }
+    },
+    "create_blog_header": {
+      "tool": "generate_image",
+      "params": {
+        "prompt": "Modern office workspace with laptop and coffee, clean aesthetic",
+        "content_type": "blog_header",
+        "style": "professional",
+        "topic": "productivity",
+        "target_audience": "professionals"
+      }
+    },
+    "optimize_for_instagram": {
+      "tool": "optimize_for_platform",
+      "params": {
+        "image_data": "base64_image_data",
+        "target_platform": "instagram",
+        "optimization_focus": ["mobile_viewing", "engagement"]
+      }
+    },
+    "analyze_thumbnail_effectiveness": {
+      "tool": "analyze_thumbnail",
+      "params": {
+        "image_data": "base64_thumbnail_data",
+        "platform": "youtube",
+        "content_category": "education"
+      }
+    },
+    "batch_generate_thumbnails": {
+      "tool": "generate_batch",
+      "params": {
+        "requests": [
+          {
+            "prompt": "Happy chef cooking pasta",
+            "content_type": "youtube_thumbnail",
+            "style": "casual"
+          },
+          {
+            "prompt": "Person working out at gym",
+            "content_type": "youtube_thumbnail", 
+            "style": "energetic"
+          }
+        ],
+        "max_concurrent": 2
+      }
+    },
+    "get_prompt_help": {
+      "tool": "get_prompt_suggestions",
+      "params": {
+        "content_type": "youtube_thumbnail",
+        "current_prompt": "person with computer"
+      }
+    }
+  },
+  "best_practices": {
+    "environment_setup": [
+      "Always set OPENAI_API_KEY in your environment or .env file",
+      "Use absolute paths in cwd configuration",
+      "Test your configuration with a simple request first",
+      "Monitor your OpenAI usage and set appropriate rate limits"
+    ],
+    "prompt_writing": [
+      "Be specific about visual elements you want",
+      "Include emotional context and mood",
+      "Specify colors, lighting, and composition when important",
+      "Consider your target audience and platform",
+      "Use the content_type parameter for automatic optimization"
+    ],
+    "image_optimization": [
+      "Choose appropriate dimensions for your platform",
+      "Use high quality for final outputs",
+      "Consider file size for web use",
+      "Test thumbnails at actual display sizes",
+      "Use the analysis tool to improve effectiveness"
+    ]
+  },
+  "troubleshooting": {
+    "common_issues": {
+      "server_not_starting": [
+        "Check that uv is installed and in PATH",
+        "Verify OPENAI_API_KEY is set correctly",
+        "Ensure all dependencies are installed with 'uv sync'",
+        "Check log output for specific error messages"
+      ],
+      "api_errors": [
+        "Verify OpenAI API key is valid and has credits",
+        "Check for rate limiting issues",
+        "Ensure prompts don't violate content policy",
+        "Try fallback model if primary model fails"
+      ],
+      "poor_results": [
+        "Make prompts more specific and detailed",
+        "Use appropriate content_type for your use case",
+        "Try different styles and emotional tones",
+        "Use the analysis tool to get improvement suggestions"
+      ]
+    }
+  }
+}

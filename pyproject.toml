@@ -1,0 +1,92 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "gpt-thumbnail-mcp"
+version = "0.1.0"
+description = "MCP server for dynamic image generation using GPT-5 for YouTube thumbnails and blog images"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    {name = "Your Name", email = "your.email@example.com"}
+]
+keywords = ["mcp", "image-generation", "youtube", "thumbnails", "gpt-5", "openai"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+]
+
+dependencies = [
+    "mcp>=1.0.0",
+    "openai>=1.50.0",
+    "pydantic>=2.0.0",
+    "pillow>=10.0.0",
+    "aiohttp>=3.9.0",
+    "python-dotenv>=1.0.0",
+    "typing-extensions>=4.5.0",
+    "fastmcp>=2.11.3",
+    "strands-agents[openai]>=1.5.0",
+    "strands-agents-tools>=0.2.4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.5.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/yourusername/gpt-thumbnail-mcp"
+Repository = "https://github.com/yourusername/gpt-thumbnail-mcp"
+Documentation = "https://github.com/yourusername/gpt-thumbnail-mcp#readme"
+
+[project.scripts]
+gpt-thumbnail-mcp = "gpt_thumbnail_mcp.server:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/gpt_thumbnail_mcp"]
+
+[tool.hatch.envs.default]
+dependencies = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+]
+
+[tool.black]
+line-length = 88
+target-version = ['py311']
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "UP", # pyupgrade
+]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[dependency-groups]
+dev = [
+    "black>=25.1.0",
+    "mypy>=1.17.1",
+    "pytest>=8.4.1",
+    "pytest-asyncio>=1.1.0",
+    "ruff>=0.12.10",
+]
