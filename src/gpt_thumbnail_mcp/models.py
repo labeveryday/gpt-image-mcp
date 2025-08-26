@@ -27,6 +27,12 @@ class GenerateImageRequest(BaseModel):
     brand_colors: Optional[List[str]] = None
     topic: Optional[str] = None
     target_audience: Optional[str] = None
+    reference_image: Optional[str] = None
+    avoid_elements: Optional[List[str]] = None
+    emphasis_elements: Optional[List[str]] = None
+    creative_mode: bool = False
+    composition_style: Optional[str] = None
+    layout_freedom: str = "standard"
 
 
 class OptimizeForPlatformRequest(BaseModel):

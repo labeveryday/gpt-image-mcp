@@ -1,6 +1,10 @@
 # GPT Thumbnail MCP Server
 
+![ai-thumbnail-generator](./img/ai-thumbnail-generator-header.png)
+
 A powerful MCP (Model Context Protocol) server that generates dynamic images using OpenAI's latest models for YouTube thumbnails, blog images, and social media content. Built with FastMCP and optimized for performance and simplicity.
+
+**🎯 Perfect for Content Creators**: Generate professional thumbnails with your photo automatically positioned and branded consistently, or get creative when you want variety.
 
 ## 🌟 Features
 
@@ -9,6 +13,14 @@ A powerful MCP (Model Context Protocol) server that generates dynamic images usi
 - **Blog Images**: Professional headers and featured images  
 - **Social Media**: Platform-optimized content for Instagram, Twitter, Facebook
 - **General Purpose**: Flexible image generation for any use case
+
+### 🖼️ **Reference Image Integration**
+- **Personal Branding**: Use your photos to create consistent thumbnails
+- **Style Preservation**: Maintains facial features and appearance from reference images
+- **Custom Layouts**: Generate thumbnails in your established style (positioning, text placement, colors)
+- **High Input Fidelity**: Advanced reference image processing for accurate results
+- **Creative Flexibility**: Choose between consistent branding or creative freedom
+- **Multiple Composition Styles**: Centered, dynamic, left/right positioning, or fully experimental
 
 ### 🚀 **Advanced AI Integration**
 - **GPT-Image-1 Support**: Uses OpenAI's latest and best image generation model
@@ -54,17 +66,8 @@ uv run python demo.py
 
 ## 🚀 Usage
 
-### Starting the MCP Server
-```bash
-# Start with UV (recommended)
-uv run gpt-thumbnail-mcp
-
-# Or run the server directly
-uv run python src/gpt_thumbnail_mcp/server.py
-```
-
-### MCP Client Integration
-Add to your MCP client configuration (Claude Code, etc.):
+### MCP Client Integration (Recommended)
+This server is designed to work with MCP clients like **Claude Code**. Add it to your MCP configuration:
 
 ```json
 {
@@ -73,6 +76,32 @@ Add to your MCP client configuration (Claude Code, etc.):
   "args": ["run", "gpt-thumbnail-mcp"],
   "cwd": "/path/to/gpt-thumbnail-mcp"
 }
+```
+
+### Quick MCP Examples
+Once connected, you can simply ask Claude:
+
+```
+🎯 "Generate a YouTube thumbnail for my Python tutorial"
+→ Creates professional thumbnail (default strict mode)
+
+🎨 "Generate a creative YouTube thumbnail with me centered"  
+→ Uses creative mode with centered composition
+
+📸 "Generate a thumbnail using my photo with 'LEARN CODING' text"
+→ Uses reference image with professional layout
+
+🚀 "Be experimental with the layout and try something artistic"
+→ Uses experimental creative mode for unique designs
+```
+
+### Starting the MCP Server (Manual)
+```bash
+# Start with UV (recommended)
+uv run gpt-thumbnail-mcp
+
+# Or run the server directly
+uv run python src/gpt_thumbnail_mcp/server.py
 ```
 
 ### Demo Usage
@@ -98,11 +127,31 @@ Generate optimized images for any platform or purpose.
   "size": "1536x1024",
   "include_text_overlay": true,
   "text_overlay": "Amazing New Tech!",
-  "brand_colors": ["#FF6B6B", "#4ECDC4"]
+  "brand_colors": ["#FF6B6B", "#4ECDC4"],
+  "reference_image": "base64_encoded_image_data",
+  "creative_mode": false,
+  "composition_style": "right",
+  "layout_freedom": "standard"
 }
 ```
 
-### 2. `analyze_thumbnail` - AI-Powered Analysis
+### 2. `generate_reference_thumbnail` - Personal Branding
+Create thumbnails using your photo in your established style.
+
+```json
+{
+  "reference_image": "base64_encoded_headshot",
+  "main_text": "5 TECH SIDE HUSTLES",
+  "secondary_text": "THAT MAKE $10K/MONTH", 
+  "topic": "entrepreneurship",
+  "style_override": "professional",
+  "creative_mode": false,
+  "composition_style": "right",
+  "layout_freedom": "standard"
+}
+```
+
+### 3. `analyze_thumbnail` - AI-Powered Analysis
 Get effectiveness scores and improvement suggestions.
 
 ```json
@@ -113,7 +162,7 @@ Get effectiveness scores and improvement suggestions.
 }
 ```
 
-### 3. `optimize_for_platform` - Platform Conversion
+### 4. `optimize_for_platform` - Platform Conversion
 Adapt existing images for different platforms.
 
 ```json
@@ -124,7 +173,7 @@ Adapt existing images for different platforms.
 }
 ```
 
-### 4. `generate_batch` - Bulk Generation
+### 5. `generate_batch` - Bulk Generation
 Generate multiple images efficiently.
 
 ```json
@@ -137,7 +186,7 @@ Generate multiple images efficiently.
 }
 ```
 
-### 5. `get_prompt_suggestions` - Prompt Enhancement
+### 6. `get_prompt_suggestions` - Prompt Enhancement
 Get AI suggestions for better prompts.
 
 ```json
@@ -185,6 +234,42 @@ Get AI suggestions for better prompts.
 - `serious` - Professional, formal
 - `surprised` - Attention-grabbing
 - `dramatic` - Intense, compelling
+
+### Creative Mode System
+
+**🔒 DEFAULT: Strict Professional Mode**
+- `creative_mode=False` (default) - Consistent, reliable professional layouts
+- Person positioned right, text on left, red banner for emphasis  
+- Perfect for consistent branding and professional thumbnails
+- **This is the recommended default for most users**
+
+**🎨 CREATIVE MODE: When You Want Variety**
+- `creative_mode=True` - Unlocks flexible and experimental options
+- Only activated when you specifically request creative freedom
+
+#### Layout Freedom Levels (when creative_mode=True)
+- `standard` - Consistent branding (same as strict mode)
+- `flexible` - Some creative freedom while maintaining best practices  
+- `experimental` - Complete creative freedom with unconventional designs
+
+#### Composition Styles (when creative_mode=True)
+- `left` - Position person on the left side
+- `right` - Position person on the right side  
+- `centered` - Center the person prominently
+- `dynamic` - Use energetic, dynamic positioning
+- `creative` - Experiment with artistic composition techniques
+
+#### Usage Patterns
+```python
+# Professional consistency (RECOMMENDED DEFAULT)
+# Just use the tool without creative parameters
+
+# Creative with structure  
+creative_mode=True, layout_freedom="flexible", composition_style="centered"
+
+# Full creative freedom
+creative_mode=True, layout_freedom="experimental", composition_style="creative"
+```
 
 ## 💾 File Storage
 
@@ -238,7 +323,53 @@ ENABLE_DETAILED_LOGGING=false          # Request/response logging
 
 ## 📋 Examples
 
-### YouTube Tutorial Thumbnail
+### MCP Usage with Claude (Recommended)
+Simply ask Claude naturally - the MCP server will handle the technical details:
+
+```
+👤 "Generate a YouTube thumbnail for my Python tutorial with 'MASTER PYTHON FAST' text"
+
+🤖 Claude creates professional thumbnail with:
+   - Your photo positioned on the right  
+   - Bold white text on the left
+   - Red banner for emphasis
+   - Professional dark background
+
+👤 "Be creative with the layout and center me in the composition"
+
+🤖 Claude uses creative_mode=True, composition_style="centered" for artistic variety
+
+👤 "Generate 5 different thumbnail variations for my coding series"
+
+🤖 Claude uses batch generation with different styles and compositions
+```
+
+### Direct API Usage (Advanced)
+
+**Professional Consistent Thumbnail (Default)**
+```json
+{
+    "prompt": "Professional YouTube thumbnail about Python programming",
+    "content_type": "youtube_thumbnail", 
+    "text_overlay": "MASTER PYTHON FAST!",
+    "reference_image": "base64_encoded_headshot"
+}
+```
+
+**Creative Experimental Thumbnail**
+```json
+{
+    "prompt": "Creative coding tutorial thumbnail",
+    "content_type": "youtube_thumbnail",
+    "text_overlay": "CODE CREATIVELY",
+    "reference_image": "base64_encoded_headshot",
+    "creative_mode": true,
+    "layout_freedom": "experimental",
+    "composition_style": "dynamic"
+}
+```
+
+### Standard YouTube Thumbnail (No Reference)
 ```python
 request = {
     "prompt": "Enthusiastic developer coding Python, modern setup, vibrant colors",
@@ -273,6 +404,24 @@ request = {
 ```
 
 ## 🧪 Testing & Development
+
+### Test Reference Image Functionality
+```bash
+# Test with sample superhero image
+uv run examples/superhero_thumbnail_test.py
+
+# Test with your own photo
+uv run examples/test_reference_thumbnail.py /path/to/your/photo.jpg
+
+# Demo creative mode options (no API calls)
+uv run examples/demo_creative_modes.py
+
+# Test all creative modes (requires API key)
+uv run examples/test_creative_modes.py
+
+# Run demo for general testing
+uv run python demo.py
+```
 
 ### Run Tests
 ```bash

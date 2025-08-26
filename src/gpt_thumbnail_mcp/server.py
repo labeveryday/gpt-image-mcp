@@ -187,7 +187,11 @@ async def generate_image(
     topic: Optional[str] = None,
     target_audience: Optional[str] = None,
     avoid_elements: Optional[List[str]] = None,
-    emphasis_elements: Optional[List[str]] = None
+    emphasis_elements: Optional[List[str]] = None,
+    reference_image: Optional[str] = None,
+    creative_mode: bool = False,
+    composition_style: Optional[str] = None,
+    layout_freedom: str = "standard"
 ) -> str:
     """Generate images using GPT-5 for YouTube thumbnails, blog images, and social media content.
     
@@ -205,6 +209,10 @@ async def generate_image(
         target_audience: Target audience for the content
         avoid_elements: Elements to avoid in the generated image
         emphasis_elements: Elements to emphasize in the generated image
+        reference_image: Base64 encoded reference image to incorporate into the generation
+        creative_mode: Enable creative freedom vs. structured layouts (default: False for consistent branding)
+        composition_style: Composition approach (centered, left, right, dynamic, creative, or None for auto)
+        layout_freedom: Layout constraints (standard=consistent branding, flexible=some creativity, experimental=full freedom)
     """
     try:
         # Create request model with proper defaults for MCP compatibility
@@ -235,6 +243,14 @@ async def generate_image(
             request_data["avoid_elements"] = avoid_elements
         if emphasis_elements:
             request_data["emphasis_elements"] = emphasis_elements
+        if reference_image:
+            request_data["reference_image"] = reference_image
+        if creative_mode:
+            request_data["creative_mode"] = creative_mode
+        if composition_style:
+            request_data["composition_style"] = composition_style
+        if layout_freedom != "standard":
+            request_data["layout_freedom"] = layout_freedom
             
         request = GenerateImageRequest(**request_data)
         
@@ -539,6 +555,94 @@ async def cleanup_temp_files() -> str:
         return json.dumps({
             "success": False,
             "error": str(e)
+        }, indent=2)
+
+
+@mcp.tool()
+async def generate_reference_thumbnail(
+    reference_image: str,
+    main_text: str,
+    secondary_text: Optional[str] = None,
+    topic: Optional[str] = None,
+    style_override: Optional[str] = None,
+    creative_mode: bool = False,
+    composition_style: Optional[str] = None,
+    layout_freedom: str = "standard"
+) -> str:
+    """Generate a thumbnail using a reference image with flexible creative options.
+    
+    Args:
+        reference_image: Base64 encoded reference image (usually a photo of the person)
+        main_text: Main headline text for the thumbnail
+        secondary_text: Optional secondary text for the red banner
+        topic: Topic or subject matter (e.g., 'tech side hustles', 'AWS certification')
+        style_override: Optional style override for different thumbnail types
+        creative_mode: Enable creative freedom vs. consistent branding (default: False)
+        composition_style: Composition approach (centered, left, right, dynamic, creative)
+        layout_freedom: Layout constraints (standard=branding, flexible=some creativity, experimental=full freedom)
+    """
+    try:
+        # Create request optimized for the user's thumbnail style
+        request_data = {
+            "prompt": f"Professional YouTube thumbnail about {topic or main_text}",
+            "content_type": ContentType.YOUTUBE_THUMBNAIL,
+            "reference_image": reference_image,
+            "include_text_overlay": True,
+            "text_overlay": main_text,
+            "style": style_override or "professional",
+            "emotional_tone": "confident",
+            "quality": "high",
+            "creative_mode": creative_mode,
+            "layout_freedom": layout_freedom
+        }
+        
+        if not style_override:
+            request_data["brand_colors"] = ["#FF0000"]
+        if topic:
+            request_data["topic"] = topic
+        if composition_style:
+            request_data["composition_style"] = composition_style
+            
+        request = GenerateImageRequest(**request_data)
+        
+        # Add secondary text to the prompt if provided
+        if secondary_text:
+            request.prompt += f" with secondary text '{secondary_text}' in a red banner"
+        
+        async with ImageGenerationService() as service:
+            response = await service.generate_image(request)
+        
+        if response.success:
+            # Save to temporary file
+            file_path = temp_image_manager.save_image(response.image_data, "png")
+            
+            return json.dumps({
+                "success": True,
+                "file_path": file_path,
+                "main_text": main_text,
+                "secondary_text": secondary_text,
+                "topic": topic,
+                "style_used": "user_optimized_thumbnail",
+                "revised_prompt": response.revised_prompt,
+                "message": "Reference-based thumbnail generated successfully!"
+            }, indent=2)
+        else:
+            return json.dumps({
+                "success": False,
+                "error": response.error,
+                "suggestions": response.suggestions or []
+            }, indent=2)
+            
+    except Exception as e:
+        logger.error(f"Reference thumbnail generation failed: {str(e)}")
+        return json.dumps({
+            "success": False,
+            "error": str(e),
+            "suggestions": [
+                "Ensure the reference image is valid base64 encoded data",
+                "Check that main_text is provided",
+                "Try with a simpler topic description"
+            ]
         }, indent=2)
 
 
