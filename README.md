@@ -128,7 +128,7 @@ Generate optimized images for any platform or purpose.
   "include_text_overlay": true,
   "text_overlay": "Amazing New Tech!",
   "brand_colors": ["#FF6B6B", "#4ECDC4"],
-  "reference_image": "base64_encoded_image_data",
+  "reference_image": "/path/to/your/photo.jpg",  // File path or base64 data
   "creative_mode": false,
   "composition_style": "right",
   "layout_freedom": "standard"
@@ -140,7 +140,7 @@ Create thumbnails using your photo in your established style.
 
 ```json
 {
-  "reference_image": "base64_encoded_headshot",
+  "reference_image": "/Users/me/photos/headshot.png",  // File path or base64 data
   "main_text": "5 TECH SIDE HUSTLES",
   "secondary_text": "THAT MAKE $10K/MONTH", 
   "topic": "entrepreneurship",
@@ -209,12 +209,33 @@ Get AI suggestions for better prompts.
 
 *All sizes use OpenAI's currently supported dimensions: 1024×1024, 1024×1792, and 1792×1024.*
 
+## 📸 Reference Image Handling
+
+### File Path Support
+Reference images can be provided as either file paths or base64 encoded data:
+
+```javascript
+// Using file paths (recommended - automatic resizing)
+"reference_image": "/Users/you/photos/headshot.jpg"
+"reference_image": "./images/profile.png"
+"reference_image": "/home/user/pictures/photo.jpg"
+
+// Using base64 data (backward compatibility)
+"reference_image": "iVBORw0KGgoAAAANSUhEUgAA..."
+```
+
+### Automatic Image Processing
+- **Large Image Handling**: Input images over 2MB are automatically resized
+- **Format Support**: JPEG, PNG, WebP, and other common formats
+- **Size Optimization**: YouTube thumbnails are optimized to stay under 2MB
+- **Quality Preservation**: Smart resizing maintains image quality
+
 ## 🎨 Content Types & Styles
 
 ### Content Types
-- `youtube_thumbnail` - High-impact video thumbnails
+- `youtube_thumbnail` - High-impact video thumbnails (auto-optimized under 2MB)
 - `blog_header` - Professional article headers
-- `blog_featured` - Featured/hero images
+- `blog_featured` - Featured/hero images  
 - `social_media` - General social content
 - `general` - Flexible general-purpose images
 

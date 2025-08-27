@@ -52,11 +52,14 @@ class ImageGenerationService:
             logger.info(f"Optimized prompt: {optimized_prompt[:100]}...")
 
             # Check if reference image is provided
-            if request.reference_image:
+            if request.reference_image and request.reference_image.strip():
+                logger.info(f"Using reference image generation (image data length: {len(request.reference_image)})")
                 response = await self._generate_with_reference_image(request, optimized_prompt)
             elif request.content_type == ContentType.YOUTUBE_THUMBNAIL:
+                logger.info("Using YouTube thumbnail generation")
                 response = await self._generate_youtube_thumbnail(request, optimized_prompt)
             else:
+                logger.info("Using generic image generation")
                 response = await self._generate_generic_image(request, optimized_prompt)
 
             return response
@@ -210,29 +213,41 @@ class ImageGenerationService:
             else:
                 reference_prompt = self._create_reference_prompt(request, optimized_prompt)
             
-            # Convert base64 back to bytes for Image API
+            # Convert base64 back to BytesIO for Image API
             import base64
             import io
             reference_bytes = base64.b64decode(request.reference_image)
+            reference_file = io.BytesIO(reference_bytes)
             
             # Use Image API edit endpoint for reference-based generation
             params = {
-                "model": settings.image_model,  # Use gpt-image-1 for edit
-                "image": [io.BytesIO(reference_bytes)],
+                "model": settings.image_model,  # Use configured image model
+                "image": reference_file,
                 "prompt": reference_prompt,
-                "input_fidelity": "high"
             }
             
-            # Add size if specified
+            # Add size if specified (Image API edit only supports specific sizes)
             if request.content_type == ContentType.YOUTUBE_THUMBNAIL:
-                params["size"] = "1536x1024"  # Closest supported size
+                params["size"] = "1536x1024"  # Closest supported size for YouTube
             elif request.size:
-                params["size"] = request.size
+                # Map unsupported sizes to supported ones
+                size_mapping = {
+                    "1792x1024": "1536x1024",
+                    "1920x1080": "1536x1024"
+                }
+                params["size"] = size_mapping.get(request.size, request.size)
                 
-            # Add quality if supported
+            # Add quality if supported by the model
             if request.quality and request.quality != "auto":
                 if settings.image_model == "gpt-image-1":
-                    params["quality"] = request.quality
+                    # Map quality values for gpt-image-1 (supports low, medium, high, auto)
+                    quality_mapping = {
+                        "standard": "medium",
+                        "low": "low", 
+                        "medium": "medium",
+                        "high": "high"
+                    }
+                    params["quality"] = quality_mapping.get(request.quality, "medium")
             
             result = await self.client.images.edit(**params)
             
@@ -253,7 +268,6 @@ class ImageGenerationService:
                     "content_type": request.content_type,
                     "model_used": settings.image_model,
                     "reference_image_used": True,
-                    "input_fidelity": "high",
                     "generation_method": "image_api_edit"
                 }
             )
@@ -328,8 +342,8 @@ class ImageGenerationService:
             image_bytes = base64.b64decode(image_data)
             image = Image.open(io.BytesIO(image_bytes))
 
-            # Ensure correct size for YouTube
-            target_size = (1920, 1080)
+            # Ensure correct size for YouTube - use 1280x720 for smaller file size
+            target_size = (1280, 720)
             if image.size != target_size:
                 image = image.resize(target_size, Image.Resampling.LANCZOS)
 
@@ -338,9 +352,18 @@ class ImageGenerationService:
             enhancer = ImageEnhance.Contrast(image)
             image = enhancer.enhance(1.2)  # Increase contrast by 20%
 
-            # Convert back to base64
+            # Convert back to base64 with PNG compression for smaller file size
             output_buffer = io.BytesIO()
-            image.save(output_buffer, format='PNG')
+            # Use PNG with maximum compression for smallest file size
+            image.save(output_buffer, format='PNG', optimize=True, compress_level=9)
+            
+            # If still too large, try additional size reduction
+            if len(output_buffer.getvalue()) > 2000000:  # If over 2MB
+                # Try smaller resolution
+                smaller_image = image.resize((1024, 576), Image.Resampling.LANCZOS)
+                output_buffer = io.BytesIO()
+                smaller_image.save(output_buffer, format='PNG', optimize=True, compress_level=9)
+            
             processed_data = base64.b64encode(output_buffer.getvalue()).decode()
 
             return processed_data

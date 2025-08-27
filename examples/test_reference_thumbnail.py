@@ -86,7 +86,10 @@ async def test_reference_generation(image_path: str):
                     print(f"   {key}: {value}")
                 
                 print(f"\n💭 Revised prompt preview:")
-                print(f"   {response.revised_prompt[:300]}...")
+                if response.revised_prompt:
+                    print(f"   {response.revised_prompt[:300]}...")
+                else:
+                    print("   (No revised prompt available)")
                 
                 return file_path
                 

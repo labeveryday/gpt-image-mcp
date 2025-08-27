@@ -1,7 +1,9 @@
 """FastMCP server for GPT-powered image generation."""
 
+import base64
 import json
 import logging
+import os
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -173,6 +175,84 @@ def get_examples() -> str:
     return json.dumps(examples, indent=2)
 
 
+def _process_reference_image(reference_image: str) -> str:
+    """
+    Process reference image input - handle both file paths and base64 data.
+    Resizes images larger than 2MB to stay under OpenAI limits.
+    
+    Args:
+        reference_image: Either a file path or base64 encoded image data
+        
+    Returns:
+        Base64 encoded image data (resized if necessary)
+        
+    Raises:
+        FileNotFoundError: If file path doesn't exist
+        ValueError: If invalid base64 data
+    """
+    from PIL import Image
+    import io
+    
+    # Check for Claude's image reference format
+    if reference_image.startswith('[Image #') and reference_image.endswith(']'):
+        raise ValueError(f"Claude image references like '{reference_image}' are not supported. Please provide a file path or base64 encoded image data directly.")
+    
+    # Check if it looks like a file path
+    if (reference_image.startswith('/') or 
+        reference_image.startswith('./') or 
+        reference_image.startswith('../') or 
+        '/' in reference_image or '\\' in reference_image):
+        
+        # Treat as file path
+        if not os.path.exists(reference_image):
+            raise FileNotFoundError(f"Reference image file not found: {reference_image}")
+        
+        # Read and process the image file
+        with open(reference_image, "rb") as image_file:
+            image_bytes = image_file.read()
+    else:
+        # Assume it's already base64 encoded data
+        try:
+            image_bytes = base64.b64decode(reference_image)
+        except Exception as e:
+            raise ValueError(f"Invalid base64 image data: {str(e)}")
+    
+    # Check image size and resize if needed (OpenAI limit is ~20MB, but we'll be conservative)
+    max_size_mb = 2
+    original_size_mb = len(image_bytes) / (1024 * 1024)
+    
+    if len(image_bytes) > max_size_mb * 1024 * 1024:
+        # Resize the image
+        image = Image.open(io.BytesIO(image_bytes))
+        
+        # Calculate new size to stay under limit
+        # Estimate: reduce dimensions by sqrt of size reduction needed
+        size_reduction_factor = (max_size_mb * 1024 * 1024) / len(image_bytes)
+        dimension_factor = (size_reduction_factor ** 0.5) * 0.9  # 0.9 for safety margin
+        
+        new_width = int(image.width * dimension_factor)
+        new_height = int(image.height * dimension_factor)
+        
+        # Resize image
+        resized_image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        
+        # Convert back to bytes
+        output_buffer = io.BytesIO()
+        # Use JPEG for better compression
+        if image.mode in ('RGBA', 'LA', 'P'):
+            # Convert to RGB for JPEG
+            resized_image = resized_image.convert('RGB')
+        resized_image.save(output_buffer, format='JPEG', quality=85, optimize=True)
+        image_bytes = output_buffer.getvalue()
+        
+        resized_size_mb = len(image_bytes) / (1024 * 1024)
+        logging.info(f"Image resized from {original_size_mb:.1f}MB to {resized_size_mb:.1f}MB")
+    
+    # Encode as base64
+    image_data = base64.b64encode(image_bytes).decode('utf-8')
+    return image_data
+
+
 @mcp.tool()
 async def generate_image(
     prompt: str,
@@ -195,6 +275,9 @@ async def generate_image(
 ) -> str:
     """Generate images using GPT-5 for YouTube thumbnails, blog images, and social media content.
     
+    This tool generates completely new images from text descriptions. For incorporating reference 
+    images (especially for YouTube thumbnails with people), use generate_reference_thumbnail instead.
+    
     Args:
         prompt: Description of the image to generate
         content_type: Type of content (youtube_thumbnail, blog_header, blog_featured, social_media, general)
@@ -209,7 +292,7 @@ async def generate_image(
         target_audience: Target audience for the content
         avoid_elements: Elements to avoid in the generated image
         emphasis_elements: Elements to emphasize in the generated image
-        reference_image: Base64 encoded reference image to incorporate into the generation
+        reference_image: Reference image - must be either a file path (e.g., "/path/to/image.jpg") or base64 encoded image data. Claude's "[Image #1]" format is not supported - save the image to a file first.
         creative_mode: Enable creative freedom vs. structured layouts (default: False for consistent branding)
         composition_style: Composition approach (centered, left, right, dynamic, creative, or None for auto)
         layout_freedom: Layout constraints (standard=consistent branding, flexible=some creativity, experimental=full freedom)
@@ -244,7 +327,7 @@ async def generate_image(
         if emphasis_elements:
             request_data["emphasis_elements"] = emphasis_elements
         if reference_image:
-            request_data["reference_image"] = reference_image
+            request_data["reference_image"] = _process_reference_image(reference_image)
         if creative_mode:
             request_data["creative_mode"] = creative_mode
         if composition_style:
@@ -569,10 +652,14 @@ async def generate_reference_thumbnail(
     composition_style: Optional[str] = None,
     layout_freedom: str = "standard"
 ) -> str:
-    """Generate a thumbnail using a reference image with flexible creative options.
+    """SPECIALIZED tool for YouTube thumbnails using reference images with predefined layouts.
+    
+    Use this tool specifically for YouTube thumbnails when you want the standard thumbnail layout
+    (person on right, text on left, red banner) with a reference image. For other content types
+    or custom layouts with reference images, use the general generate_image tool instead.
     
     Args:
-        reference_image: Base64 encoded reference image (usually a photo of the person)
+        reference_image: Reference image - must be either a file path (e.g., "/path/to/image.jpg") or base64 encoded image data. Claude's "[Image #1]" format is not supported - save the image to a file first.
         main_text: Main headline text for the thumbnail
         secondary_text: Optional secondary text for the red banner
         topic: Topic or subject matter (e.g., 'tech side hustles', 'AWS certification')
@@ -586,7 +673,7 @@ async def generate_reference_thumbnail(
         request_data = {
             "prompt": f"Professional YouTube thumbnail about {topic or main_text}",
             "content_type": ContentType.YOUTUBE_THUMBNAIL,
-            "reference_image": reference_image,
+            "reference_image": _process_reference_image(reference_image),
             "include_text_overlay": True,
             "text_overlay": main_text,
             "style": style_override or "professional",
