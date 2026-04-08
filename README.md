@@ -6,7 +6,7 @@
 [![CI](https://github.com/labeveryday/gpt-image-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/labeveryday/gpt-image-mcp/actions/workflows/ci.yml)
 [![MCP](https://img.shields.io/badge/MCP-compatible-blue.svg)](https://modelcontextprotocol.io)
 
-![gpt-image-mcp](./img/gpt-image-mcp-header.svg)
+![gpt-image-mcp](https://raw.githubusercontent.com/labeveryday/gpt-image-mcp/main/img/gpt-image-mcp-header.png)
 
 A Model Context Protocol (MCP) server for image generation, editing, and analysis powered by OpenAI's `gpt-image-1` model. Built with FastMCP — generate YouTube thumbnails, blog headers, social media images, or any custom image, with optional reference-image support and platform-aware optimization.
 
