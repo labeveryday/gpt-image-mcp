@@ -3,7 +3,6 @@
 import base64
 import io
 import logging
-from typing import Optional, Tuple
 
 from PIL import Image
 
@@ -15,27 +14,27 @@ def validate_image_data(image_data: str) -> bool:
     try:
         # Try to decode the base64 string
         image_bytes = base64.b64decode(image_data)
-        
+
         # Try to open as an image
         image = Image.open(io.BytesIO(image_bytes))
-        
+
         # Verify it's a valid image format
         if image.format not in ['PNG', 'JPEG', 'JPG', 'WEBP', 'GIF']:
             return False
-        
+
         # Check image dimensions (reasonable limits)
         width, height = image.size
         if width > 4096 or height > 4096 or width < 64 or height < 64:
             return False
-        
+
         return True
-        
+
     except Exception as e:
         logger.warning(f"Image validation failed: {str(e)}")
         return False
 
 
-def encode_image(image_path: str) -> Optional[str]:
+def encode_image(image_path: str) -> str | None:
     """Encode an image file to base64 string."""
     try:
         with open(image_path, 'rb') as image_file:
@@ -46,7 +45,7 @@ def encode_image(image_path: str) -> Optional[str]:
         return None
 
 
-def decode_image(image_data: str) -> Optional[Image.Image]:
+def decode_image(image_data: str) -> Image.Image | None:
     """Decode base64 image data to PIL Image."""
     try:
         image_bytes = base64.b64decode(image_data)
@@ -56,70 +55,70 @@ def decode_image(image_data: str) -> Optional[Image.Image]:
         return None
 
 
-def resize_image(image_data: str, target_size: Tuple[int, int], maintain_aspect_ratio: bool = True) -> Optional[str]:
+def resize_image(image_data: str, target_size: tuple[int, int], maintain_aspect_ratio: bool = True) -> str | None:
     """Resize an image and return as base64 string."""
     try:
         # Decode image
         image = decode_image(image_data)
         if not image:
             return None
-        
+
         # Resize image
         if maintain_aspect_ratio:
             image.thumbnail(target_size, Image.Resampling.LANCZOS)
         else:
             image = image.resize(target_size, Image.Resampling.LANCZOS)
-        
+
         # Encode back to base64
         output_buffer = io.BytesIO()
         format = image.format or 'PNG'
         image.save(output_buffer, format=format)
         encoded_image = base64.b64encode(output_buffer.getvalue()).decode('utf-8')
-        
+
         return encoded_image
-        
+
     except Exception as e:
         logger.error(f"Failed to resize image: {str(e)}")
         return None
 
 
-def compress_image(image_data: str, quality: int = 85, format: str = 'JPEG') -> Optional[str]:
+def compress_image(image_data: str, quality: int = 85, format: str = 'JPEG') -> str | None:
     """Compress an image and return as base64 string."""
     try:
         # Decode image
         image = decode_image(image_data)
         if not image:
             return None
-        
+
         # Convert to RGB if saving as JPEG
         if format.upper() == 'JPEG' and image.mode in ('RGBA', 'LA', 'P'):
             background = Image.new('RGB', image.size, (255, 255, 255))
             background.paste(image, mask=image.split()[-1] if image.mode == 'RGBA' else None)
             image = background
-        
+
         # Compress and save
         output_buffer = io.BytesIO()
         image.save(output_buffer, format=format, quality=quality, optimize=True)
         encoded_image = base64.b64encode(output_buffer.getvalue()).decode('utf-8')
-        
+
         return encoded_image
-        
+
     except Exception as e:
         logger.error(f"Failed to compress image: {str(e)}")
         return None
 
 
-def get_image_info(image_data: str) -> Optional[dict]:
+def get_image_info(image_data: str) -> dict | None:
     """Get information about an image."""
     try:
         image = decode_image(image_data)
         if not image:
             return None
-        
+
         # Calculate file size
         image_bytes = base64.b64decode(image_data)
         file_size = len(image_bytes)
-        
+
         return {
             'width': image.width,
             'height': image.height,
@@ -129,55 +128,55 @@ def get_image_info(image_data: str) -> Optional[dict]:
             'size_mb': file_size / (1024 * 1024),
             'aspect_ratio': image.width / image.height
         }
-        
+
     except Exception as e:
         logger.error(f"Failed to get image info: {str(e)}")
         return None
 
 
-def create_thumbnail_preview(image_data: str, size: Tuple[int, int] = (200, 200)) -> Optional[str]:
+def create_thumbnail_preview(image_data: str, size: tuple[int, int] = (200, 200)) -> str | None:
     """Create a small preview thumbnail of an image."""
     try:
         image = decode_image(image_data)
         if not image:
             return None
-        
+
         # Create thumbnail
         image.thumbnail(size, Image.Resampling.LANCZOS)
-        
+
         # Convert to base64
         output_buffer = io.BytesIO()
         format = 'PNG' if image.mode == 'RGBA' else 'JPEG'
         image.save(output_buffer, format=format)
         encoded_thumbnail = base64.b64encode(output_buffer.getvalue()).decode('utf-8')
-        
+
         return encoded_thumbnail
-        
+
     except Exception as e:
         logger.error(f"Failed to create thumbnail: {str(e)}")
         return None
 
 
-def validate_image_dimensions(image_data: str, min_size: Tuple[int, int], max_size: Tuple[int, int]) -> bool:
+def validate_image_dimensions(image_data: str, min_size: tuple[int, int], max_size: tuple[int, int]) -> bool:
     """Validate that image dimensions are within specified bounds."""
     try:
         image = decode_image(image_data)
         if not image:
             return False
-        
+
         width, height = image.size
         min_width, min_height = min_size
         max_width, max_height = max_size
-        
-        return (min_width <= width <= max_width and 
+
+        return (min_width <= width <= max_width and
                 min_height <= height <= max_height)
-        
+
     except Exception as e:
         logger.warning(f"Dimension validation failed: {str(e)}")
         return False
 
 
-def calculate_optimal_dimensions(content_type: str, platform: str = None) -> Tuple[int, int]:
+def calculate_optimal_dimensions(content_type: str, platform: str = None) -> tuple[int, int]:
     """Calculate optimal dimensions for different content types and platforms."""
     # Platform-specific dimensions
     platform_dimensions = {
@@ -188,7 +187,7 @@ def calculate_optimal_dimensions(content_type: str, platform: str = None) -> Tup
         'linkedin': (1200, 627),
         'pinterest': (735, 1102)
     }
-    
+
     # Content type dimensions
     content_dimensions = {
         'youtube_thumbnail': (1920, 1080),
@@ -197,74 +196,74 @@ def calculate_optimal_dimensions(content_type: str, platform: str = None) -> Tup
         'social_media': (1080, 1080),
         'general': (1024, 1024)
     }
-    
+
     # First try platform-specific
     if platform and platform.lower() in platform_dimensions:
         return platform_dimensions[platform.lower()]
-    
+
     # Then try content type
     if content_type.lower() in content_dimensions:
         return content_dimensions[content_type.lower()]
-    
+
     # Default
     return (1024, 1024)
 
 
-def enhance_image_contrast(image_data: str, factor: float = 1.2) -> Optional[str]:
+def enhance_image_contrast(image_data: str, factor: float = 1.2) -> str | None:
     """Enhance image contrast for better visibility."""
     try:
         from PIL import ImageEnhance
-        
+
         image = decode_image(image_data)
         if not image:
             return None
-        
+
         # Enhance contrast
         enhancer = ImageEnhance.Contrast(image)
         enhanced_image = enhancer.enhance(factor)
-        
+
         # Convert back to base64
         output_buffer = io.BytesIO()
         format = image.format or 'PNG'
         enhanced_image.save(output_buffer, format=format)
         encoded_image = base64.b64encode(output_buffer.getvalue()).decode('utf-8')
-        
+
         return encoded_image
-        
+
     except Exception as e:
         logger.error(f"Failed to enhance contrast: {str(e)}")
         return None
 
 
-def add_watermark(image_data: str, watermark_text: str, position: str = 'bottom-right', opacity: float = 0.5) -> Optional[str]:
+def add_watermark(image_data: str, watermark_text: str, position: str = 'bottom-right', opacity: float = 0.5) -> str | None:
     """Add a text watermark to an image."""
     try:
         from PIL import ImageDraw, ImageFont
-        
+
         image = decode_image(image_data)
         if not image:
             return None
-        
+
         # Create a copy to work with
         watermarked = image.copy()
-        
+
         # Create drawing context
         draw = ImageDraw.Draw(watermarked)
-        
+
         # Try to use a nice font, fall back to default
         try:
             font = ImageFont.truetype("Arial.ttf", 36)
-        except:
+        except OSError:
             font = ImageFont.load_default()
-        
+
         # Get text dimensions
         bbox = draw.textbbox((0, 0), watermark_text, font=font)
         text_width = bbox[2] - bbox[0]
         text_height = bbox[3] - bbox[1]
-        
+
         # Calculate position
         img_width, img_height = watermarked.size
-        
+
         position_coords = {
             'top-left': (20, 20),
             'top-right': (img_width - text_width - 20, 20),
@@ -272,42 +271,42 @@ def add_watermark(image_data: str, watermark_text: str, position: str = 'bottom-
             'bottom-right': (img_width - text_width - 20, img_height - text_height - 20),
             'center': ((img_width - text_width) // 2, (img_height - text_height) // 2)
         }
-        
+
         x, y = position_coords.get(position, position_coords['bottom-right'])
-        
+
         # Add semi-transparent watermark
         watermark_color = (255, 255, 255, int(255 * opacity))
         draw.text((x, y), watermark_text, font=font, fill=watermark_color)
-        
+
         # Convert back to base64
         output_buffer = io.BytesIO()
         format = 'PNG'  # Use PNG to preserve transparency
         watermarked.save(output_buffer, format=format)
         encoded_image = base64.b64encode(output_buffer.getvalue()).decode('utf-8')
-        
+
         return encoded_image
-        
+
     except Exception as e:
         logger.error(f"Failed to add watermark: {str(e)}")
         return None
 
 
-def merge_images(image_data_list: list, layout: str = 'horizontal', spacing: int = 10, background_color: tuple = (255, 255, 255)) -> Optional[str]:
+def merge_images(image_data_list: list, layout: str = 'horizontal', spacing: int = 10, background_color: tuple = (255, 255, 255)) -> str | None:
     """Merge multiple images into a single image."""
     try:
         if not image_data_list or len(image_data_list) < 2:
             return None
-        
+
         # Decode all images
         images = []
         for data in image_data_list:
             img = decode_image(data)
             if img:
                 images.append(img)
-        
+
         if len(images) < 2:
             return None
-        
+
         # Calculate dimensions for merged image
         if layout == 'horizontal':
             total_width = sum(img.width for img in images) + spacing * (len(images) - 1)
@@ -315,10 +314,10 @@ def merge_images(image_data_list: list, layout: str = 'horizontal', spacing: int
         else:  # vertical
             total_width = max(img.width for img in images)
             total_height = sum(img.height for img in images) + spacing * (len(images) - 1)
-        
+
         # Create new image
         merged_image = Image.new('RGB', (total_width, total_height), background_color)
-        
+
         # Paste images
         if layout == 'horizontal':
             x_offset = 0
@@ -332,14 +331,14 @@ def merge_images(image_data_list: list, layout: str = 'horizontal', spacing: int
                 x_offset = (total_width - img.width) // 2  # Center horizontally
                 merged_image.paste(img, (x_offset, y_offset))
                 y_offset += img.height + spacing
-        
+
         # Convert to base64
         output_buffer = io.BytesIO()
         merged_image.save(output_buffer, format='PNG')
         encoded_image = base64.b64encode(output_buffer.getvalue()).decode('utf-8')
-        
+
         return encoded_image
-        
+
     except Exception as e:
         logger.error(f"Failed to merge images: {str(e)}")
         return None

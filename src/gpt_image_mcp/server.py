@@ -1,4 +1,4 @@
-"""FastMCP server for GPT-powered image generation."""
+"""FastMCP server for OpenAI gpt-image-1 powered image generation."""
 
 import base64
 import json
@@ -6,7 +6,7 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastmcp import FastMCP
 
@@ -33,18 +33,18 @@ try:
     from .thumbnail_analyzer import ThumbnailAnalyzer
 except ImportError:
     # Direct execution fallback
-    from gpt_thumbnail_mcp.config import settings
-    from gpt_thumbnail_mcp.file_manager import temp_image_manager
-    from gpt_thumbnail_mcp.image_generator import ImageGenerationService
-    from gpt_thumbnail_mcp.models import (
+    from gpt_image_mcp.config import settings
+    from gpt_image_mcp.file_manager import temp_image_manager
+    from gpt_image_mcp.image_generator import ImageGenerationService
+    from gpt_image_mcp.models import (
         BatchGenerationRequest,
         ContentType,
         GenerateImageRequest,
         ImageAnalysisRequest,
         OptimizeForPlatformRequest,
     )
-    from gpt_thumbnail_mcp.prompt_optimizer import PromptOptimizer
-    from gpt_thumbnail_mcp.thumbnail_analyzer import ThumbnailAnalyzer
+    from gpt_image_mcp.prompt_optimizer import PromptOptimizer
+    from gpt_image_mcp.thumbnail_analyzer import ThumbnailAnalyzer
 
 # Configure logging
 logging.basicConfig(
@@ -179,34 +179,35 @@ def _process_reference_image(reference_image: str) -> str:
     """
     Process reference image input - handle both file paths and base64 data.
     Resizes images larger than 2MB to stay under OpenAI limits.
-    
+
     Args:
         reference_image: Either a file path or base64 encoded image data
-        
+
     Returns:
         Base64 encoded image data (resized if necessary)
-        
+
     Raises:
         FileNotFoundError: If file path doesn't exist
         ValueError: If invalid base64 data
     """
-    from PIL import Image
     import io
-    
+
+    from PIL import Image
+
     # Check for Claude's image reference format
     if reference_image.startswith('[Image #') and reference_image.endswith(']'):
         raise ValueError(f"Claude image references like '{reference_image}' are not supported. Please provide a file path or base64 encoded image data directly.")
-    
+
     # Check if it looks like a file path
-    if (reference_image.startswith('/') or 
-        reference_image.startswith('./') or 
-        reference_image.startswith('../') or 
+    if (reference_image.startswith('/') or
+        reference_image.startswith('./') or
+        reference_image.startswith('../') or
         '/' in reference_image or '\\' in reference_image):
-        
+
         # Treat as file path
         if not os.path.exists(reference_image):
             raise FileNotFoundError(f"Reference image file not found: {reference_image}")
-        
+
         # Read and process the image file
         with open(reference_image, "rb") as image_file:
             image_bytes = image_file.read()
@@ -215,27 +216,27 @@ def _process_reference_image(reference_image: str) -> str:
         try:
             image_bytes = base64.b64decode(reference_image)
         except Exception as e:
-            raise ValueError(f"Invalid base64 image data: {str(e)}")
-    
+            raise ValueError(f"Invalid base64 image data: {str(e)}") from e
+
     # Check image size and resize if needed (OpenAI limit is ~20MB, but we'll be conservative)
     max_size_mb = 2
     original_size_mb = len(image_bytes) / (1024 * 1024)
-    
+
     if len(image_bytes) > max_size_mb * 1024 * 1024:
         # Resize the image
         image = Image.open(io.BytesIO(image_bytes))
-        
+
         # Calculate new size to stay under limit
         # Estimate: reduce dimensions by sqrt of size reduction needed
         size_reduction_factor = (max_size_mb * 1024 * 1024) / len(image_bytes)
         dimension_factor = (size_reduction_factor ** 0.5) * 0.9  # 0.9 for safety margin
-        
+
         new_width = int(image.width * dimension_factor)
         new_height = int(image.height * dimension_factor)
-        
+
         # Resize image
         resized_image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
-        
+
         # Convert back to bytes
         output_buffer = io.BytesIO()
         # Use JPEG for better compression
@@ -244,10 +245,10 @@ def _process_reference_image(reference_image: str) -> str:
             resized_image = resized_image.convert('RGB')
         resized_image.save(output_buffer, format='JPEG', quality=85, optimize=True)
         image_bytes = output_buffer.getvalue()
-        
+
         resized_size_mb = len(image_bytes) / (1024 * 1024)
         logging.info(f"Image resized from {original_size_mb:.1f}MB to {resized_size_mb:.1f}MB")
-    
+
     # Encode as base64
     image_data = base64.b64encode(image_bytes).decode('utf-8')
     return image_data
@@ -259,25 +260,25 @@ async def generate_image(
     content_type: str = "general",
     size: str = "auto",
     quality: str = "auto",
-    style: Optional[str] = None,
-    emotional_tone: Optional[str] = None,
+    style: str | None = None,
+    emotional_tone: str | None = None,
     include_text_overlay: bool = False,
-    text_overlay: Optional[str] = None,
-    brand_colors: Optional[List[str]] = None,
-    topic: Optional[str] = None,
-    target_audience: Optional[str] = None,
-    avoid_elements: Optional[List[str]] = None,
-    emphasis_elements: Optional[List[str]] = None,
-    reference_image: Optional[str] = None,
+    text_overlay: str | None = None,
+    brand_colors: list[str] | None = None,
+    topic: str | None = None,
+    target_audience: str | None = None,
+    avoid_elements: list[str] | None = None,
+    emphasis_elements: list[str] | None = None,
+    reference_image: str | None = None,
     creative_mode: bool = False,
-    composition_style: Optional[str] = None,
+    composition_style: str | None = None,
     layout_freedom: str = "standard"
 ) -> str:
-    """Generate images using GPT-5 for YouTube thumbnails, blog images, and social media content.
-    
-    This tool generates completely new images from text descriptions. For incorporating reference 
+    """Generate images using OpenAI gpt-image-1 for YouTube thumbnails, blog images, and social media content.
+
+    This tool generates completely new images from text descriptions. For incorporating reference
     images (especially for YouTube thumbnails with people), use generate_reference_thumbnail instead.
-    
+
     Args:
         prompt: Description of the image to generate
         content_type: Type of content (youtube_thumbnail, blog_header, blog_featured, social_media, general)
@@ -304,12 +305,12 @@ async def generate_image(
             "content_type": content_type,
             "include_text_overlay": include_text_overlay
         }
-        
+
         # Only include non-None optional values
         if size and size != "auto":
             request_data["size"] = size
         if quality and quality != "auto":
-            request_data["quality"] = quality  
+            request_data["quality"] = quality
         if style:
             request_data["style"] = style
         if emotional_tone:
@@ -334,13 +335,13 @@ async def generate_image(
             request_data["composition_style"] = composition_style
         if layout_freedom != "standard":
             request_data["layout_freedom"] = layout_freedom
-            
+
         request = GenerateImageRequest(**request_data)
-        
+
         # Generate image
         async with ImageGenerationService() as service:
             response = await service.generate_image(request)
-        
+
         if response.success:
             # Save image to temporary file instead of returning base64 data
             try:
@@ -352,7 +353,7 @@ async def generate_image(
                     "metadata": response.metadata,
                     "message": "Image generated and saved successfully!"
                 }
-                
+
                 if response.suggestions:
                     result["suggestions"] = response.suggestions
             except Exception as e:
@@ -368,9 +369,9 @@ async def generate_image(
                 "error": response.error,
                 "suggestions": response.suggestions or []
             }
-        
+
         return json.dumps(result, indent=2)
-        
+
     except Exception as e:
         logger.error(f"Image generation failed: {str(e)}")
         return json.dumps({
@@ -388,11 +389,11 @@ async def generate_image(
 async def optimize_for_platform(
     image_data: str,
     target_platform: str,
-    content_type: Optional[str] = None,
-    optimization_focus: Optional[List[str]] = None
+    content_type: str | None = None,
+    optimization_focus: list[str] | None = None
 ) -> str:
     """Optimize an existing image for a specific platform.
-    
+
     Args:
         image_data: Base64 encoded image data
         target_platform: Target platform (youtube, instagram, twitter, facebook, blog)
@@ -405,17 +406,17 @@ async def optimize_for_platform(
             "image_data": image_data,
             "target_platform": target_platform
         }
-        
+
         if content_type:
             request_data["content_type"] = content_type
         if optimization_focus:
             request_data["optimization_focus"] = optimization_focus
-            
+
         request = OptimizeForPlatformRequest(**request_data)
-        
+
         async with ImageGenerationService() as service:
             response = await service.optimize_for_platform(request)
-        
+
         if response.success:
             # Save optimized image to temporary file
             try:
@@ -440,9 +441,9 @@ async def optimize_for_platform(
                 "error": response.error,
                 "suggestions": response.suggestions or []
             }
-        
+
         return json.dumps(result, indent=2)
-        
+
     except Exception as e:
         logger.error(f"Platform optimization failed: {str(e)}")
         return json.dumps({
@@ -455,10 +456,10 @@ async def optimize_for_platform(
 async def analyze_thumbnail(
     image_data: str,
     platform: str = "youtube",
-    content_category: Optional[str] = None
+    content_category: str | None = None
 ) -> str:
     """Analyze a thumbnail's effectiveness and provide improvement suggestions.
-    
+
     Args:
         image_data: Base64 encoded image data
         platform: Platform for analysis (youtube, instagram, twitter, facebook, blog)
@@ -470,15 +471,15 @@ async def analyze_thumbnail(
             "image_data": image_data,
             "platform": platform
         }
-        
+
         if content_category:
             request_data["content_category"] = content_category
-            
+
         request = ImageAnalysisRequest(**request_data)
-        
+
         analyzer = ThumbnailAnalyzer()
         response = await analyzer.analyze_image(request)
-        
+
         if response.success:
             result = {
                 "success": True,
@@ -492,9 +493,9 @@ async def analyze_thumbnail(
                 "success": False,
                 "error": response.error
             }
-        
+
         return json.dumps(result, indent=2)
-        
+
     except Exception as e:
         logger.error(f"Thumbnail analysis failed: {str(e)}")
         return json.dumps({
@@ -505,11 +506,11 @@ async def analyze_thumbnail(
 
 @mcp.tool()
 async def generate_batch(
-    requests: List[Dict[str, Any]],
+    requests: list[dict[str, Any]],
     max_concurrent: int = 3
 ) -> str:
     """Generate multiple images at once with different parameters.
-    
+
     Args:
         requests: List of image generation requests (each with prompt, content_type, etc.)
         max_concurrent: Maximum number of concurrent generations (1-10)
@@ -520,15 +521,15 @@ async def generate_batch(
         for req_dict in requests:
             req = GenerateImageRequest(**req_dict)
             generation_requests.append(req)
-        
+
         batch_request = BatchGenerationRequest(
             requests=generation_requests,
             max_concurrent=min(max(max_concurrent, 1), 10)  # Clamp between 1-10
         )
-        
+
         async with ImageGenerationService() as service:
             response = await service.generate_batch(batch_request)
-        
+
         # Format results for output
         results_summary = {
             "total_successful": response.total_successful,
@@ -536,13 +537,13 @@ async def generate_batch(
             "processing_time": f"{response.processing_time:.2f} seconds",
             "results": []
         }
-        
+
         for i, result in enumerate(response.results):
             result_data = {
                 "index": i,
                 "success": result.success
             }
-            
+
             if result.success:
                 # Save each batch image to temporary file
                 try:
@@ -564,11 +565,11 @@ async def generate_batch(
                     "error": result.error,
                     "suggestions": result.suggestions
                 })
-            
+
             results_summary["results"].append(result_data)
-        
+
         return json.dumps(results_summary, indent=2)
-        
+
     except Exception as e:
         logger.error(f"Batch generation failed: {str(e)}")
         return json.dumps({
@@ -580,34 +581,34 @@ async def generate_batch(
 @mcp.tool()
 async def get_prompt_suggestions(
     content_type: str,
-    current_prompt: Optional[str] = None
+    current_prompt: str | None = None
 ) -> str:
     """Get suggestions for improving image generation prompts.
-    
+
     Args:
         content_type: Type of content (youtube_thumbnail, blog_header, blog_featured, social_media, general)
         current_prompt: Current prompt to analyze and improve (optional)
     """
     try:
         content_type_enum = ContentType(content_type)
-        
+
         optimizer = PromptOptimizer()
-        
+
         # Get general suggestions for content type
         suggestions = optimizer.get_prompt_suggestions(content_type_enum)
-        
+
         result = {
             "content_type": content_type_enum.value,
             "suggestions": suggestions
         }
-        
+
         # Analyze current prompt if provided
         if current_prompt:
             analysis = optimizer.analyze_prompt_quality(current_prompt)
             result["prompt_analysis"] = analysis
-        
+
         return json.dumps(result, indent=2)
-        
+
     except Exception as e:
         logger.error(f"Prompt suggestions failed: {str(e)}")
         return json.dumps({
@@ -645,19 +646,19 @@ async def cleanup_temp_files() -> str:
 async def generate_reference_thumbnail(
     reference_image: str,
     main_text: str,
-    secondary_text: Optional[str] = None,
-    topic: Optional[str] = None,
-    style_override: Optional[str] = None,
+    secondary_text: str | None = None,
+    topic: str | None = None,
+    style_override: str | None = None,
     creative_mode: bool = False,
-    composition_style: Optional[str] = None,
+    composition_style: str | None = None,
     layout_freedom: str = "standard"
 ) -> str:
     """SPECIALIZED tool for YouTube thumbnails using reference images with predefined layouts.
-    
+
     Use this tool specifically for YouTube thumbnails when you want the standard thumbnail layout
     (person on right, text on left, red banner) with a reference image. For other content types
     or custom layouts with reference images, use the general generate_image tool instead.
-    
+
     Args:
         reference_image: Reference image - must be either a file path (e.g., "/path/to/image.jpg") or base64 encoded image data. Claude's "[Image #1]" format is not supported - save the image to a file first.
         main_text: Main headline text for the thumbnail
@@ -682,27 +683,27 @@ async def generate_reference_thumbnail(
             "creative_mode": creative_mode,
             "layout_freedom": layout_freedom
         }
-        
+
         if not style_override:
             request_data["brand_colors"] = ["#FF0000"]
         if topic:
             request_data["topic"] = topic
         if composition_style:
             request_data["composition_style"] = composition_style
-            
+
         request = GenerateImageRequest(**request_data)
-        
+
         # Add secondary text to the prompt if provided
         if secondary_text:
             request.prompt += f" with secondary text '{secondary_text}' in a red banner"
-        
+
         async with ImageGenerationService() as service:
             response = await service.generate_image(request)
-        
+
         if response.success:
             # Save to temporary file
             file_path = temp_image_manager.save_image(response.image_data, "png")
-            
+
             return json.dumps({
                 "success": True,
                 "file_path": file_path,
@@ -719,7 +720,7 @@ async def generate_reference_thumbnail(
                 "error": response.error,
                 "suggestions": response.suggestions or []
             }, indent=2)
-            
+
     except Exception as e:
         logger.error(f"Reference thumbnail generation failed: {str(e)}")
         return json.dumps({
@@ -736,12 +737,12 @@ async def generate_reference_thumbnail(
 def main():
     """Main entry point for the FastMCP server."""
     logger.info(f"Starting {settings.server_name} v{settings.server_version}")
-    
+
     # Validate configuration
     if not settings.openai_api_key:
         logger.error("OpenAI API key not found. Please set OPENAI_API_KEY environment variable.")
         return
-    
+
     # Clean up old temporary files on startup
     try:
         cleaned_count = temp_image_manager.cleanup_old_files()
@@ -749,7 +750,7 @@ def main():
             logger.info(f"Cleaned up {cleaned_count} old temporary files on startup")
     except Exception as e:
         logger.warning(f"Failed to clean up temporary files on startup: {str(e)}")
-    
+
     # Run the FastMCP server
     mcp.run()
 

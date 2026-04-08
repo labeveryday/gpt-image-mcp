@@ -1,1 +1,1 @@
-"""Test package for GPT Thumbnail MCP server."""
+"""Test package for GPT Image MCP server."""

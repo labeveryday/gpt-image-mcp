@@ -2,14 +2,15 @@
 
 import base64
 import io
+
 import pytest
 from PIL import Image
 
-from gpt_thumbnail_mcp.utils import (
-    validate_image_data,
+from gpt_image_mcp.utils import (
+    calculate_optimal_dimensions,
     get_image_info,
     resize_image,
-    calculate_optimal_dimensions
+    validate_image_data,
 )
 
 
@@ -37,7 +38,7 @@ def test_get_image_info():
     """Test getting image information."""
     image_data = create_test_image(200, 150)
     info = get_image_info(image_data)
-    
+
     assert info is not None
     assert info['width'] == 200
     assert info['height'] == 150
@@ -49,9 +50,9 @@ def test_resize_image():
     """Test image resizing."""
     image_data = create_test_image(400, 300)
     resized_data = resize_image(image_data, (200, 150), maintain_aspect_ratio=False)
-    
+
     assert resized_data is not None
-    
+
     # Check the resized image dimensions
     resized_info = get_image_info(resized_data)
     assert resized_info['width'] == 200
@@ -63,15 +64,15 @@ def test_calculate_optimal_dimensions():
     # YouTube
     dims = calculate_optimal_dimensions("youtube_thumbnail")
     assert dims == (1920, 1080)
-    
+
     # Instagram
     dims = calculate_optimal_dimensions("social_media", "instagram")
     assert dims == (1080, 1080)
-    
+
     # Blog
     dims = calculate_optimal_dimensions("blog_header")
     assert dims == (1536, 1024)
-    
+
     # Default
     dims = calculate_optimal_dimensions("unknown")
     assert dims == (1024, 1024)

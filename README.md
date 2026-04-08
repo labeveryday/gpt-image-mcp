@@ -1,8 +1,28 @@
-# GPT Thumbnail MCP Server
+# GPT Image MCP Server
 
-![ai-thumbnail-generator](./img/ai-thumbnail-generator-header.png)
+[![PyPI version](https://img.shields.io/pypi/v/gpt-image-mcp.svg)](https://pypi.org/project/gpt-image-mcp/)
+[![Python versions](https://img.shields.io/pypi/pyversions/gpt-image-mcp.svg)](https://pypi.org/project/gpt-image-mcp/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![CI](https://github.com/labeveryday/gpt-image-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/labeveryday/gpt-image-mcp/actions/workflows/ci.yml)
+[![MCP](https://img.shields.io/badge/MCP-compatible-blue.svg)](https://modelcontextprotocol.io)
 
-A powerful MCP (Model Context Protocol) server that generates dynamic images using OpenAI's latest models for YouTube thumbnails, blog images, and social media content. Built with FastMCP and optimized for performance and simplicity.
+![gpt-image-mcp](./img/gpt-image-mcp-header.svg)
+
+A Model Context Protocol (MCP) server for image generation, editing, and analysis powered by OpenAI's `gpt-image-1` model. Built with FastMCP — generate YouTube thumbnails, blog headers, social media images, or any custom image, with optional reference-image support and platform-aware optimization.
+
+## 📦 Install
+
+```bash
+pip install gpt-image-mcp
+# or
+uv add gpt-image-mcp
+```
+
+Set `OPENAI_API_KEY` in your environment, then run:
+
+```bash
+gpt-image-mcp
+```
 
 **🎯 Perfect for Content Creators**: Generate professional thumbnails with your photo automatically positioned and branded consistently, or get creative when you want variety.
 
@@ -50,8 +70,8 @@ A powerful MCP (Model Context Protocol) server that generates dynamic images usi
 ### Quick Start
 ```bash
 # Clone the repository
-git clone https://github.com/labeveryday/gpt-thumbnail-mcp.git
-cd gpt-thumbnail-mcp
+git clone https://github.com/labeveryday/gpt-image-mcp.git
+cd gpt-image-mcp
 
 # Install dependencies
 uv sync
@@ -71,10 +91,10 @@ This server is designed to work with MCP clients like **Claude Code**. Add it to
 
 ```json
 {
-  "name": "gpt-thumbnail-mcp",
+  "name": "gpt-image-mcp",
   "command": "uv",
-  "args": ["run", "gpt-thumbnail-mcp"],
-  "cwd": "/path/to/gpt-thumbnail-mcp"
+  "args": ["run", "gpt-image-mcp"],
+  "cwd": "/path/to/gpt-image-mcp"
 }
 ```
 
@@ -98,10 +118,10 @@ Once connected, you can simply ask Claude:
 ### Starting the MCP Server (Manual)
 ```bash
 # Start with UV (recommended)
-uv run gpt-thumbnail-mcp
+uv run gpt-image-mcp
 
 # Or run the server directly
-uv run python src/gpt_thumbnail_mcp/server.py
+uv run python src/gpt_image_mcp/server.py
 ```
 
 ### Demo Usage
@@ -297,9 +317,9 @@ creative_mode=True, layout_freedom="experimental", composition_style="creative"
 ### Temporary Image Storage
 Generated images are automatically saved to cross-platform temporary directories:
 
-- **macOS**: `/var/folders/.../gpt-thumbnail-mcp/`
-- **Windows**: `C:\Users\{user}\AppData\Local\Temp\gpt-thumbnail-mcp\`  
-- **Linux**: `/tmp/gpt-thumbnail-mcp/`
+- **macOS**: `/var/folders/.../gpt-image-mcp/`
+- **Windows**: `C:\Users\{user}\AppData\Local\Temp\gpt-image-mcp\`  
+- **Linux**: `/tmp/gpt-image-mcp/`
 
 **Automatic Cleanup:**
 - Files older than 24 hours are automatically deleted
@@ -309,10 +329,10 @@ Generated images are automatically saved to cross-platform temporary directories
 **Manual Management:**
 ```bash
 # Check temp directory status
-uv run python -c "from src.gpt_thumbnail_mcp.file_manager import temp_image_manager; print(temp_image_manager.get_temp_dir_info())"
+uv run python -c "from src.gpt_image_mcp.file_manager import temp_image_manager; print(temp_image_manager.get_temp_dir_info())"
 
 # Clean up old files manually
-uv run python -c "from src.gpt_thumbnail_mcp.file_manager import temp_image_manager; print(f'Cleaned {temp_image_manager.cleanup_old_files()} files')"
+uv run python -c "from src.gpt_image_mcp.file_manager import temp_image_manager; print(f'Cleaned {temp_image_manager.cleanup_old_files()} files')"
 ```
 
 ## 🔧 Configuration
@@ -450,7 +470,7 @@ uv run python demo.py
 uv run pytest
 
 # Run with coverage
-uv run pytest --cov=src/gpt_thumbnail_mcp
+uv run pytest --cov=src/gpt_image_mcp
 
 # Test specific functionality
 uv run python demo.py
@@ -471,7 +491,7 @@ uv run mypy src/
 ### Development Server
 ```bash
 # Start in development mode with detailed logging
-LOG_LEVEL=DEBUG ENABLE_DETAILED_LOGGING=true uv run python src/gpt_thumbnail_mcp/server.py
+LOG_LEVEL=DEBUG ENABLE_DETAILED_LOGGING=true uv run python src/gpt_image_mcp/server.py
 ```
 
 ## 🤖 Integration Examples
@@ -483,7 +503,7 @@ from mcp import ClientSession, stdio_client, StdioServerParameters
 
 async def generate_thumbnail():
     async with stdio_client(StdioServerParameters(
-        command="uv", args=["run", "gpt-thumbnail-mcp"]
+        command="uv", args=["run", "gpt-image-mcp"]
     )) as (read, write):
         async with ClientSession(read, write) as client:
             result = await client.call_tool("generate_image", {
@@ -530,10 +550,10 @@ uv run python -c "import openai; print(openai.api_key)"
 ### Debug Mode
 ```bash
 # Enable verbose logging
-LOG_LEVEL=DEBUG ENABLE_DETAILED_LOGGING=true uv run gpt-thumbnail-mcp
+LOG_LEVEL=DEBUG ENABLE_DETAILED_LOGGING=true uv run gpt-image-mcp
 
 # Check server health
-uv run python -c "from src.gpt_thumbnail_mcp.config import settings; print(settings)"
+uv run python -c "from src.gpt_image_mcp.config import settings; print(settings)"
 ```
 
 ## 📈 Performance Notes
@@ -565,8 +585,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/gpt-thumbnail-mcp/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/gpt-thumbnail-mcp/discussions)
+- **Issues**: [GitHub Issues](https://github.com/labeveryday/gpt-image-mcp/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/labeveryday/gpt-image-mcp/discussions)
 - **Documentation**: See `docs/` directory for detailed guides
 
 ---

@@ -16,8 +16,8 @@ import json
 import os
 from pathlib import Path
 
-from src.gpt_thumbnail_mcp.models import GenerateImageRequest, ContentType, ThumbnailStyle, EmotionalTone
-from src.gpt_thumbnail_mcp.image_generator import ImageGenerationService
+from src.gpt_image_mcp.models import GenerateImageRequest, ContentType, ThumbnailStyle, EmotionalTone
+from src.gpt_image_mcp.image_generator import ImageGenerationService
 
 
 async def demo_youtube_thumbnail():

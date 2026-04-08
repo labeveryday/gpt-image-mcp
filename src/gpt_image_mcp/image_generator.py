@@ -1,10 +1,9 @@
-"""Core image generation service using GPT-5 and OpenAI models."""
+"""Core image generation service using OpenAI gpt-image-1."""
 
 import asyncio
 import base64
 import io
 import logging
-from typing import Any, Dict, List, Optional, Tuple
 
 import aiohttp
 from openai import AsyncOpenAI
@@ -20,19 +19,19 @@ from .models import (
     OptimizeForPlatformRequest,
 )
 from .prompt_optimizer import PromptOptimizer
-from .utils import encode_image, validate_image_data
+from .utils import validate_image_data
 
 logger = logging.getLogger(__name__)
 
 
 class ImageGenerationService:
-    """Service for generating images using GPT-5 and OpenAI models."""
+    """Service for generating images using OpenAI image models."""
 
     def __init__(self):
         """Initialize the image generation service."""
         self.client = AsyncOpenAI(**settings.openai_client_config)
         self.prompt_optimizer = PromptOptimizer()
-        self._session: Optional[aiohttp.ClientSession] = None
+        self._session: aiohttp.ClientSession | None = None
 
     async def __aenter__(self):
         """Async context manager entry."""
@@ -92,7 +91,7 @@ class ImageGenerationService:
 
             # Use Image API directly for YouTube thumbnails
             size = request.size or "1792x1024"
-            
+
             # Handle quality parameter based on model
             if settings.image_model == "gpt-image-1":
                 # gpt-image-1 doesn't use quality/detail parameters
@@ -110,16 +109,16 @@ class ImageGenerationService:
                 "n": 1,
                 **quality_param
             }
-            
+
             # Add parameters based on model support
             if settings.image_model in ["dall-e-2", "dall-e-3"]:
                 params["size"] = size
                 params["response_format"] = "b64_json"
-            
+
             result = await self.client.images.generate(**params)
 
             image_data = result.data[0].b64_json
-            
+
             # Post-process for YouTube optimization
             processed_image = await self._post_process_youtube_thumbnail(
                 image_data, request
@@ -151,7 +150,7 @@ class ImageGenerationService:
         try:
             # Use Image API for direct generation
             size = request.size or "1024x1024"
-            
+
             # Handle quality parameter based on model
             if settings.image_model == "gpt-image-1":
                 # gpt-image-1 doesn't use quality/detail parameters
@@ -162,7 +161,7 @@ class ImageGenerationService:
             else:
                 # dall-e-2 only supports standard quality
                 quality_param = {"quality": "standard"}
-            
+
             # Build parameters dynamically based on model
             params = {
                 "model": settings.image_model,
@@ -170,16 +169,16 @@ class ImageGenerationService:
                 "n": 1,
                 **quality_param
             }
-            
+
             # Add parameters based on model support
             if settings.image_model in ["dall-e-2", "dall-e-3"]:
                 params["size"] = size
                 params["response_format"] = "b64_json"
-            
+
             result = await self.client.images.generate(**params)
 
             image_data = result.data[0].b64_json
-            
+
             # Post-process based on content type
             if request.content_type in [ContentType.BLOG_HEADER, ContentType.BLOG_FEATURED]:
                 processed_image = await self._post_process_blog_image(image_data, request)
@@ -212,20 +211,20 @@ class ImageGenerationService:
                 reference_prompt = self._create_reference_thumbnail_prompt(request, optimized_prompt)
             else:
                 reference_prompt = self._create_reference_prompt(request, optimized_prompt)
-            
+
             # Convert base64 back to BytesIO for Image API
             import base64
             import io
             reference_bytes = base64.b64decode(request.reference_image)
             reference_file = io.BytesIO(reference_bytes)
-            
+
             # Use Image API edit endpoint for reference-based generation
             params = {
                 "model": settings.image_model,  # Use configured image model
                 "image": reference_file,
                 "prompt": reference_prompt,
             }
-            
+
             # Add size if specified (Image API edit only supports specific sizes)
             if request.content_type == ContentType.YOUTUBE_THUMBNAIL:
                 params["size"] = "1536x1024"  # Closest supported size for YouTube
@@ -236,30 +235,30 @@ class ImageGenerationService:
                     "1920x1080": "1536x1024"
                 }
                 params["size"] = size_mapping.get(request.size, request.size)
-                
+
             # Add quality if supported by the model
             if request.quality and request.quality != "auto":
                 if settings.image_model == "gpt-image-1":
                     # Map quality values for gpt-image-1 (supports low, medium, high, auto)
                     quality_mapping = {
                         "standard": "medium",
-                        "low": "low", 
+                        "low": "low",
                         "medium": "medium",
                         "high": "high"
                     }
                     params["quality"] = quality_mapping.get(request.quality, "medium")
-            
+
             result = await self.client.images.edit(**params)
-            
+
             image_data = result.data[0].b64_json
             revised_prompt = getattr(result.data[0], 'revised_prompt', reference_prompt)
-            
+
             # Post-process if YouTube thumbnail
             if request.content_type == ContentType.YOUTUBE_THUMBNAIL:
                 processed_image = await self._post_process_youtube_thumbnail(image_data, request)
             else:
                 processed_image = image_data
-            
+
             return ImageGenerationResponse(
                 success=True,
                 image_data=processed_image,
@@ -271,7 +270,7 @@ class ImageGenerationService:
                     "generation_method": "image_api_edit"
                 }
             )
-            
+
         except Exception as e:
             logger.error(f"Reference image generation failed: {str(e)}")
             # Fallback to regular generation without reference
@@ -287,7 +286,7 @@ class ImageGenerationService:
         """Generate image using fallback model."""
         try:
             logger.info(f"Using fallback model for image generation: {settings.fallback_model}")
-            
+
             # Handle quality parameter for fallback model
             if settings.fallback_model == "gpt-image-1":
                 quality_param = {}  # gpt-image-1 doesn't use quality parameters
@@ -295,19 +294,19 @@ class ImageGenerationService:
                 quality_param = {"quality": "standard"}
             else:
                 quality_param = {"quality": "standard"}
-            
+
             params = {
                 "model": settings.fallback_model,
                 "prompt": optimized_prompt,
                 "n": 1,
                 **quality_param
             }
-            
+
             # Add parameters based on model support
             if settings.fallback_model in ["dall-e-2", "dall-e-3"]:
                 params["size"] = request.size or "1024x1024"
                 params["response_format"] = "b64_json"
-            
+
             result = await self.client.images.generate(**params)
 
             return ImageGenerationResponse(
@@ -356,14 +355,14 @@ class ImageGenerationService:
             output_buffer = io.BytesIO()
             # Use PNG with maximum compression for smallest file size
             image.save(output_buffer, format='PNG', optimize=True, compress_level=9)
-            
+
             # If still too large, try additional size reduction
             if len(output_buffer.getvalue()) > 2000000:  # If over 2MB
                 # Try smaller resolution
                 smaller_image = image.resize((1024, 576), Image.Resampling.LANCZOS)
                 output_buffer = io.BytesIO()
                 smaller_image.save(output_buffer, format='PNG', optimize=True, compress_level=9)
-            
+
             processed_data = base64.b64encode(output_buffer.getvalue()).decode()
 
             return processed_data
@@ -402,7 +401,7 @@ class ImageGenerationService:
             if not validate_image_data(request.image_data):
                 raise ValueError("Invalid image data provided")
 
-            # Use GPT-5 with the original image to create an optimized version
+            # Use the configured model with the original image to create an optimized version
             optimization_prompt = self._create_optimization_prompt(request)
 
             tools = [
@@ -415,7 +414,7 @@ class ImageGenerationService:
             # Determine optimal size for platform (using OpenAI supported sizes)
             platform_sizes = {
                 "youtube": "1792x1024",
-                "instagram": "1024x1024", 
+                "instagram": "1024x1024",
                 "twitter": "1792x1024",
                 "facebook": "1792x1024",
                 "blog": "1792x1024"
@@ -442,7 +441,7 @@ class ImageGenerationService:
 
             # Extract optimized image
             image_generation_calls = [
-                output for output in response.output 
+                output for output in response.output
                 if output.type == "image_generation_call"
             ]
 
@@ -499,7 +498,7 @@ class ImageGenerationService:
     async def generate_batch(self, request: BatchGenerationRequest) -> BatchGenerationResponse:
         """Generate multiple images concurrently."""
         start_time = asyncio.get_event_loop().time()
-        
+
         # Limit concurrent requests
         semaphore = asyncio.Semaphore(
             min(request.max_concurrent, settings.max_concurrent_generations)
@@ -544,17 +543,17 @@ class ImageGenerationService:
             total_failed=failed,
             processing_time=processing_time
         )
-    
+
     def _create_reference_thumbnail_prompt(self, request: GenerateImageRequest, base_prompt: str) -> str:
         """Create optimized prompt for reference-based YouTube thumbnail generation."""
-        
+
         # Check for creative mode or flexible layout
         if request.creative_mode or request.layout_freedom in ["flexible", "experimental"]:
             return self._create_creative_reference_prompt(request, base_prompt)
-        
+
         # Standard/rigid layout mode (original behavior)
-        style_prompt = f"""Create a professional YouTube thumbnail using the person from the reference image. 
-        
+        style_prompt = f"""Create a professional YouTube thumbnail using the person from the reference image.
+
 Composition:
 - Position the person on the RIGHT side of the thumbnail (40% of image width)
 - Person should have a confident, engaging expression looking at the camera
@@ -576,21 +575,21 @@ Style Requirements:
 - Authoritative and trustworthy appearance
 
 Additional Context: {base_prompt}"""
-        
+
         # Add brand colors if specified
         if request.brand_colors:
             color_text = ", ".join(request.brand_colors)
             style_prompt += f"\n\nUse these brand colors where appropriate: {color_text}"
-        
+
         # Add topic-specific elements if provided
         if request.topic:
             style_prompt += f"\n\nThe thumbnail is about: {request.topic}"
-        
+
         return style_prompt
-    
+
     def _create_creative_reference_prompt(self, request: GenerateImageRequest, base_prompt: str) -> str:
         """Create flexible, creative prompt for reference-based generation."""
-        
+
         # Base creative prompt
         creative_prompt = f"""Create a compelling YouTube thumbnail using the person from the reference image.
 
@@ -606,69 +605,69 @@ Creative Parameters:"""
         # Add composition style if specified
         if request.composition_style:
             if request.composition_style == "centered":
-                creative_prompt += f"\n- Center the person prominently in the composition"
+                creative_prompt += "\n- Center the person prominently in the composition"
             elif request.composition_style == "dynamic":
-                creative_prompt += f"\n- Use dynamic, energetic positioning and angles" 
+                creative_prompt += "\n- Use dynamic, energetic positioning and angles"
             elif request.composition_style == "creative":
-                creative_prompt += f"\n- Experiment with creative, artistic composition techniques"
+                creative_prompt += "\n- Experiment with creative, artistic composition techniques"
             else:
                 creative_prompt += f"\n- Position the person on the {request.composition_style} side"
 
         # Layout freedom level
         if request.layout_freedom == "experimental":
-            creative_prompt += f"\n- Complete creative freedom with layout, colors, and styling"
-            creative_prompt += f"\n- Experiment with unconventional thumbnail designs"
+            creative_prompt += "\n- Complete creative freedom with layout, colors, and styling"
+            creative_prompt += "\n- Experiment with unconventional thumbnail designs"
         elif request.layout_freedom == "flexible":
-            creative_prompt += f"\n- Some creative flexibility while maintaining thumbnail best practices"
-        
+            creative_prompt += "\n- Some creative flexibility while maintaining thumbnail best practices"
+
         # Add text handling
         if request.include_text_overlay and request.text_overlay:
             if request.layout_freedom == "experimental":
                 creative_prompt += f"\n- Creatively integrate the text '{request.text_overlay}' in an impactful way"
             else:
                 creative_prompt += f"\n- Include the text '{request.text_overlay}' prominently with high contrast"
-        
+
         # Add brand colors if specified (but more flexibly)
         if request.brand_colors:
             color_text = ", ".join(request.brand_colors)
             creative_prompt += f"\n- Incorporate these brand colors creatively: {color_text}"
-        
+
         # Add topic context
         if request.topic:
             creative_prompt += f"\n- Topic: {request.topic}"
-        
+
         # Add style preferences
         if request.style:
             creative_prompt += f"\n- Overall style: {request.style}"
-        
+
         if request.emotional_tone:
             creative_prompt += f"\n- Emotional tone: {request.emotional_tone}"
-            
+
         return creative_prompt
-    
+
     def _create_reference_prompt(self, request: GenerateImageRequest, base_prompt: str) -> str:
         """Create prompt for reference-based image generation (non-thumbnail)."""
-        reference_prompt = f"""Create an image incorporating the person/subject from the reference image. 
-        
+        reference_prompt = f"""Create an image incorporating the person/subject from the reference image.
+
 Instructions:
 - Preserve the key features and appearance of the person/subject from the reference
 - Use high input fidelity to maintain facial features and important details
 - {base_prompt}
         """
-        
+
         # Add specific positioning if YouTube thumbnail
         if request.content_type == ContentType.YOUTUBE_THUMBNAIL:
             reference_prompt += "\n- Position the person prominently in the composition"
-        
+
         # Add text overlay instructions
         if request.include_text_overlay and request.text_overlay:
             reference_prompt += f"\n- Include the text '{request.text_overlay}' prominently with high contrast"
-        
+
         # Add style preferences
         if request.style:
             reference_prompt += f"\n- Style: {request.style}"
-        
+
         if request.emotional_tone:
             reference_prompt += f"\n- Emotional tone: {request.emotional_tone}"
-            
+
         return reference_prompt

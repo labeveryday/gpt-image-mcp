@@ -1,17 +1,13 @@
 """Tests for simplified Pydantic models."""
 
-import pytest
 
-from gpt_thumbnail_mcp.models import (
-    GenerateImageRequest,
-    ContentType
-)
+from gpt_image_mcp.models import GenerateImageRequest
 
 
 def test_generate_image_request_basic():
     """Test basic GenerateImageRequest creation."""
     request = GenerateImageRequest(prompt="Test image for demo")
-    
+
     assert request.prompt == "Test image for demo"
     assert request.content_type == "general"
 
@@ -26,7 +22,7 @@ def test_generate_image_request_youtube():
         include_text_overlay=True,
         text_overlay="Amazing Video!"
     )
-    
+
     assert request.content_type == "youtube_thumbnail"
     assert request.style == "professional"
     assert request.emotional_tone == "excited"
@@ -40,7 +36,7 @@ def test_brand_colors():
         prompt="Test brand colors image",
         brand_colors=["#FF0000", "#00FF00", "#0000FF"]
     )
-    
+
     assert len(request.brand_colors) == 3
     assert "#FF0000" in request.brand_colors
 
@@ -57,7 +53,7 @@ def test_optional_fields():
         topic="test topic",
         target_audience="developers"
     )
-    
+
     assert request.topic == "test topic"
     assert request.target_audience == "developers"
     assert request.size == "1024x1024"

@@ -10,8 +10,8 @@ from pathlib import Path
 src_path = Path(__file__).parent.parent / "src"
 sys.path.insert(0, str(src_path))
 
-from gpt_thumbnail_mcp.image_generator import ImageGenerationService
-from gpt_thumbnail_mcp.models import GenerateImageRequest, ContentType
+from gpt_image_mcp.image_generator import ImageGenerationService
+from gpt_image_mcp.models import GenerateImageRequest, ContentType
 
 
 def demonstrate_creative_modes():

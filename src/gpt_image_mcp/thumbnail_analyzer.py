@@ -1,7 +1,6 @@
 """Thumbnail analysis service for evaluating image effectiveness."""
 
 import logging
-from typing import Dict, List, Optional
 
 from openai import AsyncOpenAI
 
@@ -39,18 +38,18 @@ class ThumbnailAnalyzer:
 
             # Perform AI-powered analysis
             analysis_result = await self._perform_ai_analysis(request, image_info)
-            
+
             # Calculate effectiveness score
             effectiveness_score = self._calculate_effectiveness_score(
-                analysis_result, 
-                request.platform, 
+                analysis_result,
+                request.platform,
                 image_info
             )
 
             # Generate improvement suggestions
             suggestions = self._generate_suggestions(
-                analysis_result, 
-                request.platform, 
+                analysis_result,
+                request.platform,
                 image_info
             )
 
@@ -76,7 +75,7 @@ class ThumbnailAnalyzer:
         except Exception:
             return False
 
-    async def _perform_ai_analysis(self, request: ImageAnalysisRequest, image_info: Dict) -> Dict:
+    async def _perform_ai_analysis(self, request: ImageAnalysisRequest, image_info: dict) -> dict:
         """Perform AI-powered analysis of the thumbnail."""
         try:
             # Create analysis prompt based on platform
@@ -112,7 +111,7 @@ class ThumbnailAnalyzer:
 
             # Parse the analysis response
             analysis_text = response.choices[0].message.content
-            
+
             # Structure the analysis results
             analysis_result = {
                 "ai_analysis": analysis_text,
@@ -133,9 +132,9 @@ class ThumbnailAnalyzer:
                 "platform": request.platform or "general"
             }
 
-    def _create_analysis_prompt(self, platform: Optional[str], content_category: Optional[str]) -> str:
+    def _create_analysis_prompt(self, platform: str | None, content_category: str | None) -> str:
         """Create an analysis prompt based on platform and content category."""
-        base_prompt = """You are an expert in visual design and thumbnail optimization. 
+        base_prompt = """You are an expert in visual design and thumbnail optimization.
         Analyze the provided image and evaluate its effectiveness as a thumbnail.
 
         Please evaluate the following aspects:
@@ -188,78 +187,78 @@ class ThumbnailAnalyzer:
 
         return base_prompt
 
-    def _calculate_effectiveness_score(self, analysis: Dict, platform: Optional[str], image_info: Dict) -> float:
+    def _calculate_effectiveness_score(self, analysis: dict, platform: str | None, image_info: dict) -> float:
         """Calculate an overall effectiveness score from 0-10."""
         try:
             base_score = 5.0  # Start with middle score
-            
+
             # Technical quality factors
             if image_info.get("width", 0) >= 1000 and image_info.get("height", 0) >= 500:
                 base_score += 0.5  # Good resolution
-            
+
             if image_info.get("size_mb", 0) < 2.0:
                 base_score += 0.3  # Reasonable file size
-            
+
             # Platform-specific scoring
             if platform == "youtube":
                 # Check for YouTube optimal dimensions
                 width = image_info.get("width", 0)
                 height = image_info.get("height", 0)
                 aspect_ratio = width / height if height > 0 else 0
-                
+
                 if 1.7 <= aspect_ratio <= 1.8:  # Close to 16:9
                     base_score += 0.7
                 elif width == 1920 and height == 1080:
                     base_score += 1.0  # Perfect YouTube dimensions
-            
+
             # AI analysis influence (parse keywords from analysis)
             ai_analysis = analysis.get("ai_analysis", "").lower()
-            
+
             positive_indicators = [
                 "eye-catching", "clear", "good contrast", "effective", "engaging",
                 "well-composed", "professional", "vibrant", "readable"
             ]
-            
+
             negative_indicators = [
                 "cluttered", "unclear", "poor contrast", "blurry", "confusing",
                 "unprofessional", "difficult to read", "low quality"
             ]
-            
+
             for indicator in positive_indicators:
                 if indicator in ai_analysis:
                     base_score += 0.2
-            
+
             for indicator in negative_indicators:
                 if indicator in ai_analysis:
                     base_score -= 0.3
-            
+
             # Clamp score between 0 and 10
             return max(0.0, min(10.0, base_score))
-            
+
         except Exception as e:
             logger.warning(f"Score calculation failed: {str(e)}")
             return 5.0  # Return neutral score on error
 
-    def _generate_suggestions(self, analysis: Dict, platform: Optional[str], image_info: Dict) -> List[str]:
+    def _generate_suggestions(self, analysis: dict, platform: str | None, image_info: dict) -> list[str]:
         """Generate improvement suggestions based on analysis."""
         suggestions = []
-        
+
         try:
             # Technical suggestions
             if image_info.get("width", 0) < 1000:
                 suggestions.append("Consider using a higher resolution image for better clarity")
-            
+
             if image_info.get("size_mb", 0) > 2.0:
                 suggestions.append("Optimize image file size for faster loading")
-            
+
             # Platform-specific suggestions
             if platform == "youtube":
                 width = image_info.get("width", 0)
                 height = image_info.get("height", 0)
-                
+
                 if width != 1920 or height != 1080:
                     suggestions.append("Use 1920x1080 pixels for optimal YouTube thumbnail display")
-                
+
                 suggestions.extend([
                     "Ensure faces are clearly visible and expressive",
                     "Use high contrast colors for better visibility",
@@ -267,18 +266,18 @@ class ThumbnailAnalyzer:
                     "Test readability at small thumbnail sizes",
                     "Consider emotional impact and click-through potential"
                 ])
-            
+
             elif platform == "instagram":
                 aspect_ratio = image_info.get("aspect_ratio", 1)
                 if abs(aspect_ratio - 1.0) > 0.1:
                     suggestions.append("Consider using square aspect ratio (1:1) for Instagram posts")
-                
+
                 suggestions.extend([
                     "Optimize for mobile viewing experience",
                     "Ensure colors are vibrant and engaging",
                     "Consider how the image fits with your feed aesthetic"
                 ])
-            
+
             elif platform == "blog":
                 suggestions.extend([
                     "Ensure the image clearly relates to your content",
@@ -286,18 +285,18 @@ class ThumbnailAnalyzer:
                     "Consider SEO implications and alt text",
                     "Optimize for web loading speeds"
                 ])
-            
+
             # Parse AI analysis for specific suggestions
             ai_analysis = analysis.get("ai_analysis", "")
             if "contrast" in ai_analysis.lower() and ("low" in ai_analysis.lower() or "poor" in ai_analysis.lower()):
                 suggestions.append("Increase contrast between elements for better visibility")
-            
+
             if "text" in ai_analysis.lower() and ("small" in ai_analysis.lower() or "difficult" in ai_analysis.lower()):
                 suggestions.append("Make text larger and more readable")
-            
+
             if "cluttered" in ai_analysis.lower():
                 suggestions.append("Simplify composition and remove unnecessary elements")
-            
+
             # Remove duplicates while preserving order
             seen = set()
             unique_suggestions = []
@@ -305,52 +304,52 @@ class ThumbnailAnalyzer:
                 if suggestion not in seen:
                     seen.add(suggestion)
                     unique_suggestions.append(suggestion)
-            
+
             return unique_suggestions[:10]  # Limit to top 10 suggestions
-            
+
         except Exception as e:
             logger.warning(f"Suggestion generation failed: {str(e)}")
             return ["Unable to generate specific suggestions due to analysis error"]
 
-    def _analyze_dimensions(self, image_info: Dict, platform: Optional[str]) -> Dict:
+    def _analyze_dimensions(self, image_info: dict, platform: str | None) -> dict:
         """Analyze image dimensions for platform compatibility."""
         width = image_info.get("width", 0)
         height = image_info.get("height", 0)
         aspect_ratio = width / height if height > 0 else 0
-        
+
         analysis = {
             "current_dimensions": f"{width}x{height}",
             "aspect_ratio": round(aspect_ratio, 2),
             "platform_optimal": False,
             "recommendations": []
         }
-        
+
         # Platform-specific dimension analysis
         if platform == "youtube":
             analysis["platform_optimal"] = (width == 1920 and height == 1080)
             analysis["target_dimensions"] = "1920x1080"
             analysis["target_aspect_ratio"] = 1.78
-            
+
             if not analysis["platform_optimal"]:
                 analysis["recommendations"].append("Resize to 1920x1080 for optimal YouTube display")
-        
+
         elif platform == "instagram":
             analysis["platform_optimal"] = abs(aspect_ratio - 1.0) < 0.1
             analysis["target_dimensions"] = "1080x1080"
             analysis["target_aspect_ratio"] = 1.0
-            
+
             if not analysis["platform_optimal"]:
                 analysis["recommendations"].append("Use square format (1:1) for Instagram")
-        
+
         elif platform == "blog":
             # Blog images are flexible, but landscape is often preferred for headers
             analysis["platform_optimal"] = aspect_ratio > 1.2
             analysis["target_dimensions"] = "1536x1024 (for headers)"
             analysis["target_aspect_ratio"] = 1.5
-        
+
         return analysis
 
-    def _assess_technical_quality(self, image_info: Dict) -> Dict:
+    def _assess_technical_quality(self, image_info: dict) -> dict:
         """Assess technical quality of the image."""
         assessment = {
             "resolution": "Unknown",
@@ -359,12 +358,12 @@ class ThumbnailAnalyzer:
             "quality_rating": "Unknown",
             "recommendations": []
         }
-        
+
         try:
             width = image_info.get("width", 0)
             height = image_info.get("height", 0)
             total_pixels = width * height
-            
+
             # Resolution assessment
             if total_pixels >= 2073600:  # 1920x1080
                 assessment["resolution"] = "Excellent"
@@ -375,7 +374,7 @@ class ThumbnailAnalyzer:
             else:
                 assessment["resolution"] = "Poor"
                 assessment["recommendations"].append("Use higher resolution image")
-            
+
             # File size assessment
             size_mb = image_info.get("size_mb", 0)
             if size_mb <= 0.5:
@@ -387,7 +386,7 @@ class ThumbnailAnalyzer:
             else:
                 assessment["file_size"] = "Too Large"
                 assessment["recommendations"].append("Optimize file size for web use")
-            
+
             # Overall quality rating
             if assessment["resolution"] in ["Excellent", "Good"] and assessment["file_size"] in ["Excellent", "Good"]:
                 assessment["quality_rating"] = "High"
@@ -395,9 +394,9 @@ class ThumbnailAnalyzer:
                 assessment["quality_rating"] = "Medium"
             else:
                 assessment["quality_rating"] = "Low"
-        
+
         except Exception as e:
             logger.warning(f"Technical assessment failed: {str(e)}")
             assessment["recommendations"].append("Unable to assess technical quality")
-        
+
         return assessment
